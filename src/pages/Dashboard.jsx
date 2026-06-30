@@ -116,10 +116,12 @@ export function Dashboard() {
         </div>
         <div className="flex items-center gap-2">
           <DatePicker value={period} onChange={setPeriod} />
-          <button onClick={() => setGalleryOpen(true)}
-            className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-surface text-sm text-text-secondary hover:bg-grey-50 transition-colors">
-            <Plus className="w-4 h-4" /> Add widget
-          </button>
+          {editMode && (
+            <button onClick={() => setGalleryOpen(true)}
+              className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-surface text-sm text-text-secondary hover:bg-grey-50 transition-colors">
+              <Plus className="w-4 h-4" /> Add widget
+            </button>
+          )}
           <button
             onClick={() => { setEditMode(e => !e); if (editMode) toast('Layout saved', 'success') }}
             className={`flex items-center gap-2 h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${editMode ? 'bg-brand-500 text-white border-brand-500' : 'border-border bg-surface text-text-secondary hover:bg-grey-50'}`}>
@@ -197,7 +199,7 @@ export function Dashboard() {
         <div className="flex flex-col items-center justify-center py-24 gap-3 text-text-muted">
           <Settings2 className="w-10 h-10" />
           <p className="font-medium text-text-secondary">No widgets on your dashboard</p>
-          <button onClick={() => setGalleryOpen(true)} className="text-sm text-brand-500 hover:underline">Add widgets from the gallery</button>
+          <button onClick={() => { setEditMode(true); setGalleryOpen(true) }} className="text-sm text-brand-500 hover:underline">Add widgets from the gallery</button>
         </div>
       )}
 
