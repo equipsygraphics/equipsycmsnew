@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import {
-  LayoutDashboard, ShoppingBag, Tag, Grid3x3, Navigation, ShoppingCart, Users,
+  LayoutDashboard, ShoppingBag, Tag, Navigation, ShoppingCart, Users,
   FileText, Hash, BookOpen, FolderOpen, MessageSquare, Briefcase, Package,
   Megaphone, Ticket, Mail, Rss, BarChart2, Globe, Search, Settings, UserCog, Sliders,
   ChevronDown, ChevronRight,
@@ -13,7 +13,6 @@ const NAV = [
     label: 'Commerce', icon: ShoppingBag, children: [
       { label: 'Products', icon: ShoppingBag, to: '/products' },
       { label: 'Attributes', icon: Tag, to: '/attributes' },
-      { label: 'Categories', icon: Grid3x3, to: '/categories' },
       { label: 'Mega Menu', icon: Navigation, to: '/mega-menu' },
       { label: 'Orders', icon: ShoppingCart, to: '/orders' },
       { label: 'Customers', icon: Users, to: '/customers' },

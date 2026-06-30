@@ -25,8 +25,9 @@ export function KpiCard({ metric, onRemove, editMode }) {
           <p className="text-2xl font-semibold text-text-primary">{metric.value}</p>
           <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${up ? 'text-success-500' : 'text-error-500'}`}>
             {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-            <span>{up ? '+' : ''}{metric.trend}%</span>
+            <span>{up ? '+' : ''}{metric.trend}% vs prev. period</span>
           </div>
+          {metric.sub && <p className="text-xs text-text-muted mt-0.5">{metric.sub}</p>}
         </div>
         <div className="w-28 h-12 shrink-0">
           <ResponsiveContainer width="100%" height="100%">

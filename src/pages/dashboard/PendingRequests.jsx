@@ -1,43 +1,72 @@
-import { ArrowRight, MoreHorizontal, MessageSquare, Briefcase, Package } from 'lucide-react'
+import { ArrowRight, ShoppingCart, Inbox } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { pendingRequests } from '../../data/mockDashboard'
+import { ordersAwaiting, pendingRequests } from '../../data/mockDashboard'
 
-const ICONS = { 'Quote': MessageSquare, 'Trade Account': Briefcase, 'Builder Pack': Package }
-const LINKS = { 'Quote': '/quote-requests', 'Trade Account': '/trade-account', 'Builder Pack': '/builder-pack' }
+const totalRequests = pendingRequests.reduce((sum, r) => sum + r.count, 0)
 
 export function PendingRequests({ editMode, onRemove }) {
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-card flex flex-col relative group">
+    <div className="grid grid-cols-2 gap-4 relative">
       {editMode && (
-        <button onClick={() => onRemove('requests')} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-grey-700 text-white text-xs flex items-center justify-center hover:bg-error-500 z-10">×</button>
+        <button onClick={() => onRemove('action_queue')} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-grey-700 text-white text-xs flex items-center justify-center hover:bg-error-500 z-10">×</button>
       )}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <p className="text-sm font-semibold text-text-primary">Pending Requests</p>
-        {!editMode && (
-          <button className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-grey-50 text-text-muted">
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-        )}
+
+      {/* Orders Awaiting Processing */}
+      <div className="bg-surface rounded-xl border border-border shadow-card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#FEF0C7' }}>
+              <ShoppingCart className="w-4 h-4" style={{ color: '#B54708' }} />
+            </div>
+            <p className="text-sm font-semibold text-text-primary">Orders Awaiting Action</p>
+          </div>
+        </div>
+        <div className="divide-y divide-border">
+          <Link to="/orders?status=processing" className="flex items-center justify-between px-5 py-3.5 hover:bg-grey-50 transition-colors group/row">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Awaiting Processing</p>
+              <p className="text-xs text-text-muted mt-0.5">Orders submitted, not yet picked</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="min-w-[28px] h-7 rounded-full text-sm font-bold flex items-center justify-center px-2" style={{ backgroundColor: '#FEF0C7', color: '#B54708' }}>{ordersAwaiting.processing}</span>
+              <ArrowRight className="w-4 h-4 text-text-muted opacity-0 group-hover/row:opacity-100 transition-opacity" />
+            </div>
+          </Link>
+          <Link to="/orders?status=shipped" className="flex items-center justify-between px-5 py-3.5 hover:bg-grey-50 transition-colors group/row">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Awaiting Shipment</p>
+              <p className="text-xs text-text-muted mt-0.5">Picked, pending Shippit dispatch</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="min-w-[28px] h-7 rounded-full bg-grey-100 text-text-primary text-sm font-bold flex items-center justify-center px-2">{ordersAwaiting.shipment}</span>
+              <ArrowRight className="w-4 h-4 text-text-muted opacity-0 group-hover/row:opacity-100 transition-opacity" />
+            </div>
+          </Link>
+        </div>
       </div>
-      <div className="divide-y divide-border">
-        {pendingRequests.map(req => {
-          const Icon = ICONS[req.type]
-          return (
-            <Link key={req.type} to={LINKS[req.type]} className="flex items-center gap-4 px-5 py-4 hover:bg-grey-50 transition-colors group/row">
-              <div className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
-                <Icon className="w-4 h-4 text-brand-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-text-primary">{req.type}</p>
-                <p className="text-xs text-text-muted">{req.count} awaiting review</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-error-500 text-white text-xs font-semibold flex items-center justify-center">{req.count}</span>
+
+      {/* New Requests */}
+      <div className="bg-surface rounded-xl border border-border shadow-card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
+              <Inbox className="w-4 h-4 text-brand-500" />
+            </div>
+            <p className="text-sm font-semibold text-text-primary">New Requests</p>
+          </div>
+          <span className="text-xl font-bold text-text-primary">{totalRequests}</span>
+        </div>
+        <div className="divide-y divide-border">
+          {pendingRequests.map(req => (
+            <Link key={req.type} to={req.to} className="flex items-center justify-between px-5 py-3.5 hover:bg-grey-50 transition-colors group/row">
+              <p className="text-sm font-medium text-text-primary">{req.type}</p>
+              <div className="flex items-center gap-2.5">
+                <span className="min-w-[28px] h-7 rounded-full bg-brand-50 text-brand-600 text-sm font-bold flex items-center justify-center px-2">{req.count}</span>
                 <ArrowRight className="w-4 h-4 text-text-muted opacity-0 group-hover/row:opacity-100 transition-opacity" />
               </div>
             </Link>
-          )
-        })}
+          ))}
+        </div>
       </div>
     </div>
   )

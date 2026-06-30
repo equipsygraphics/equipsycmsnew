@@ -7,7 +7,6 @@ import { ProductForm } from './pages/products/ProductForm'
 import { OrdersList } from './pages/orders/OrdersList'
 import { OrderDetail } from './pages/orders/OrderDetail'
 import { CustomersList } from './pages/customers/CustomersList'
-import { Categories } from './pages/categories/Categories'
 import { MegaMenu } from './pages/mega-menu/MegaMenu'
 import { Attributes } from './pages/attributes/Attributes'
 import { BlogList } from './pages/blog/BlogList'
@@ -42,7 +41,6 @@ export const router = createBrowserRouter([
       { path: '/products/new', element: <ProductForm /> },
       { path: '/products/:id', element: <ProductForm /> },
       { path: '/attributes', element: <Attributes /> },
-      { path: '/categories', element: <Categories /> },
       { path: '/mega-menu', element: <MegaMenu /> },
       { path: '/orders', element: <OrdersList /> },
       { path: '/orders/:id', element: <OrderDetail /> },
