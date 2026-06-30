@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Figtree', sans-serif;
+
+  /* Brand */
+  --color-brand-50: #E6F5FE;
+  --color-brand-100: #cdebfe;
+  --color-brand-200: #9BD7FD;
+  --color-brand-500: #0b9ff9;
+  --color-brand-600: #0580CC;
+  --color-brand-700: #04619A;
+
+  /* Grey */
+  --color-grey-50: #F3F4F6;
+  --color-grey-100: #E5E7EB;
+  --color-grey-200: #D2D6DB;
+  --color-grey-300: #9DA4AE;
+  --color-grey-500: #4D5761;
+  --color-grey-600: #384250;
+  --color-grey-700: #1F2A37;
+  --color-grey-900: #0D121C;
+
+  /* Semantic */
+  --color-surface: #ffffff;
+  --color-bg: #F3F4F6;
+  --color-sidebar: #0D121C;
+  --color-border: #E5E7EB;
+  --color-text-primary: #0D121C;
+  --color-text-secondary: #4D5761;
+  --color-text-muted: #9DA4AE;
+
+  /* Status */
+  --color-error-500: #F04438;
+  --color-error-700: #B42318;
+  --color-warning-500: #F79009;
+  --color-success-500: #17B26A;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(13,18,28,0.05);
+  --shadow-sm: 0 1px 2px 0 rgba(13,18,28,0.06), 0 1px 3px 0 rgba(13,18,28,0.10);
+  --shadow-card: 0px 1px 4px 0px rgba(13,18,28,0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Figtree', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Cards containing tables scroll horizontally instead of clipping columns */
+.overflow-hidden:has(> table),
+.overflow-hidden:has(> div > table),
+.overflow-hidden:has(> .overflow-x-auto) {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
