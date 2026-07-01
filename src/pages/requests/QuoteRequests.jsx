@@ -264,8 +264,8 @@ export function QuoteRequests() {
         }
       />
 
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex border-b border-border overflow-x-auto">
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex border-b border-border overflow-x-auto flex-1 min-w-0" style={{ scrollbarWidth: 'none' }}>
           {TABS.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${activeTab === tab.key ? 'border-brand-500 text-brand-500' : 'border-transparent text-text-muted hover:text-text-primary'}`}>
@@ -277,7 +277,7 @@ export function QuoteRequests() {
           ))}
         </div>
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search by ref, customer, account…"
+          placeholder="Search by ref, customer, account..."
           className="h-9 px-3 rounded-lg border border-border bg-surface text-sm placeholder:text-text-muted outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 w-64" />
       </div>
 
