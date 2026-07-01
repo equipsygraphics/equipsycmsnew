@@ -11,20 +11,7 @@ export const mockBlogPosts = [
   { id: 8, title: 'New Range: Concealed Fix Grab Rails', category: 'Products', author: 'Sarah M.', date: null, status: 'draft', featuredImage: null, tags: ['Grab Rails'], excerpt: '', content: '' },
 ]
 
-export const mockTags = [
-  { id: 1, name: 'SDA', slug: 'sda', usedBy: 3 },
-  { id: 2, name: 'NDIS', slug: 'ndis', usedBy: 5 },
-  { id: 3, name: 'Housing', slug: 'housing', usedBy: 2 },
-  { id: 4, name: 'Bathroom', slug: 'bathroom', usedBy: 4 },
-  { id: 5, name: 'Safety', slug: 'safety', usedBy: 6 },
-  { id: 6, name: 'Installation', slug: 'installation', usedBy: 3 },
-  { id: 7, name: 'DIY', slug: 'diy', usedBy: 2 },
-  { id: 8, name: 'Grab Rails', slug: 'grab-rails', usedBy: 5 },
-  { id: 9, name: 'Ramps', slug: 'ramps', usedBy: 3 },
-  { id: 10, name: 'Standards', slug: 'standards', usedBy: 1 },
-  { id: 11, name: 'Anti-Slip', slug: 'anti-slip', usedBy: 2 },
-  { id: 12, name: 'Shower Seats', slug: 'shower-seats', usedBy: 2 },
-]
+export { mockTags } from './mockTagging'
 
 export const PAGE_TEMPLATES = [
   { value: 'standard', label: 'Standard Page', desc: 'Title, description, content blocks, CTA' },

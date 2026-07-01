@@ -1,0 +1,190 @@
+// ── Utility ───────────────────────────────────────────────────────────────────
+
+export function toSlug(name) {
+  return name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+}
+
+// ── Tags ──────────────────────────────────────────────────────────────────────
+
+export const mockTags = [
+  { id: 1,  name: 'SDA',                slug: 'sda',                 description: 'Specialist Disability Accommodation content' },
+  { id: 2,  name: 'NDIS',               slug: 'ndis',                description: 'National Disability Insurance Scheme' },
+  { id: 3,  name: 'Housing',             slug: 'housing',             description: '' },
+  { id: 4,  name: 'Bathroom',            slug: 'bathroom',            description: 'Bathroom accessibility products and guides' },
+  { id: 5,  name: 'Safety',              slug: 'safety',              description: '' },
+  { id: 6,  name: 'Installation',        slug: 'installation',        description: '' },
+  { id: 7,  name: 'DIY',                 slug: 'diy',                 description: '' },
+  { id: 8,  name: 'Grab Rails',          slug: 'grab-rails',          description: '' },
+  { id: 9,  name: 'Ramps',               slug: 'ramps',               description: '' },
+  { id: 10, name: 'Standards',           slug: 'standards',           description: 'AS/NZS compliance and building standards' },
+  { id: 11, name: 'Anti-Slip',           slug: 'anti-slip',           description: '' },
+  { id: 12, name: 'Shower Seats',        slug: 'shower-seats',        description: '' },
+  { id: 13, name: 'Ramp Calculator',     slug: 'ramp-calculator',     description: 'Related to the ramp rise/run calculator tool' },
+  { id: 14, name: 'Accessible Bathroom', slug: 'accessible-bathroom', description: 'Accessible bathroom design guides and products' },
+  { id: 15, name: 'Builder',             slug: 'builder',             description: 'Content relevant to builders and contractors' },
+  { id: 16, name: 'OT',                  slug: 'ot',                  description: 'Content relevant to occupational therapists' },
+]
+
+// ── Category ↔ Tag links (explicit pivot) ────────────────────────────────────
+// weight: higher = surfaces first in related content queries
+
+export const mockCategoryTagLinks = [
+  // Cat 1: Ramps & Access
+  { categoryId: 1, tagId: 9,  weight: 10 },
+  { categoryId: 1, tagId: 13, weight: 9  },
+  { categoryId: 1, tagId: 11, weight: 8  },
+  { categoryId: 1, tagId: 10, weight: 6  },
+  { categoryId: 1, tagId: 5,  weight: 5  },
+  { categoryId: 1, tagId: 6,  weight: 4  },
+  { categoryId: 1, tagId: 7,  weight: 3  },
+  { categoryId: 1, tagId: 15, weight: 4  },
+
+  // Cat 2: Steps, Nosings & Transitions
+  { categoryId: 2, tagId: 11, weight: 10 },
+  { categoryId: 2, tagId: 5,  weight: 8  },
+  { categoryId: 2, tagId: 10, weight: 7  },
+  { categoryId: 2, tagId: 6,  weight: 6  },
+
+  // Cat 3: Grab Rails & Hand Support
+  { categoryId: 3, tagId: 8,  weight: 10 },
+  { categoryId: 3, tagId: 14, weight: 8  },
+  { categoryId: 3, tagId: 4,  weight: 7  },
+  { categoryId: 3, tagId: 5,  weight: 6  },
+  { categoryId: 3, tagId: 6,  weight: 5  },
+  { categoryId: 3, tagId: 7,  weight: 4  },
+  { categoryId: 3, tagId: 16, weight: 5  },
+
+  // Cat 4: Accessible Shower & Wet Areas
+  { categoryId: 4, tagId: 4,  weight: 10 },
+  { categoryId: 4, tagId: 12, weight: 9  },
+  { categoryId: 4, tagId: 14, weight: 8  },
+  { categoryId: 4, tagId: 5,  weight: 6  },
+  { categoryId: 4, tagId: 2,  weight: 5  },
+
+  // Cat 5: Taps and Bathroom Solutions
+  { categoryId: 5, tagId: 4,  weight: 9  },
+  { categoryId: 5, tagId: 14, weight: 7  },
+  { categoryId: 5, tagId: 5,  weight: 5  },
+
+  // Cat 7: Door Solutions
+  { categoryId: 7, tagId: 5,  weight: 8  },
+  { categoryId: 7, tagId: 6,  weight: 7  },
+  { categoryId: 7, tagId: 15, weight: 5  },
+]
+
+// ── Content ↔ Tag links (polymorphic pivot) ───────────────────────────────────
+// contentType: 'article' | 'page' | 'tool'
+// featured: true = surfaces this item first for matching categories
+// weight: secondary ordering within same type
+
+export const mockContentTagLinks = [
+  // Articles (blog posts)
+  { tagId: 1,  contentType: 'article', contentId: 1, featured: true,  weight: 10 },
+  { tagId: 3,  contentType: 'article', contentId: 1, featured: false, weight: 8  },
+  { tagId: 2,  contentType: 'article', contentId: 1, featured: false, weight: 7  },
+
+  { tagId: 4,  contentType: 'article', contentId: 2, featured: true,  weight: 10 },
+  { tagId: 5,  contentType: 'article', contentId: 2, featured: false, weight: 8  },
+  { tagId: 12, contentType: 'article', contentId: 2, featured: false, weight: 7  },
+  { tagId: 14, contentType: 'article', contentId: 2, featured: false, weight: 6  },
+
+  { tagId: 8,  contentType: 'article', contentId: 3, featured: true,  weight: 10 },
+  { tagId: 6,  contentType: 'article', contentId: 3, featured: false, weight: 8  },
+  { tagId: 7,  contentType: 'article', contentId: 3, featured: false, weight: 7  },
+  { tagId: 4,  contentType: 'article', contentId: 3, featured: false, weight: 6  },
+
+  { tagId: 2,  contentType: 'article', contentId: 4, featured: true,  weight: 10 },
+  { tagId: 1,  contentType: 'article', contentId: 4, featured: false, weight: 8  },
+  { tagId: 3,  contentType: 'article', contentId: 4, featured: false, weight: 7  },
+
+  { tagId: 12, contentType: 'article', contentId: 5, featured: true,  weight: 10 },
+  { tagId: 4,  contentType: 'article', contentId: 5, featured: false, weight: 8  },
+  { tagId: 5,  contentType: 'article', contentId: 5, featured: false, weight: 7  },
+
+  { tagId: 9,  contentType: 'article', contentId: 7, featured: false, weight: 10 },
+  { tagId: 10, contentType: 'article', contentId: 7, featured: false, weight: 8  },
+  { tagId: 5,  contentType: 'article', contentId: 7, featured: false, weight: 6  },
+  { tagId: 6,  contentType: 'article', contentId: 7, featured: false, weight: 5  },
+
+  // Pages
+  { tagId: 2,  contentType: 'page', contentId: 4,  featured: true,  weight: 10 },
+  { tagId: 1,  contentType: 'page', contentId: 4,  featured: false, weight: 7  },
+  { tagId: 3,  contentType: 'page', contentId: 4,  featured: false, weight: 6  },
+
+  { tagId: 15, contentType: 'page', contentId: 5,  featured: true,  weight: 10 },
+  { tagId: 1,  contentType: 'page', contentId: 5,  featured: false, weight: 7  },
+  { tagId: 2,  contentType: 'page', contentId: 5,  featured: false, weight: 6  },
+
+  { tagId: 8,  contentType: 'page', contentId: 8,  featured: true,  weight: 10 },
+  { tagId: 6,  contentType: 'page', contentId: 8,  featured: false, weight: 9  },
+  { tagId: 7,  contentType: 'page', contentId: 8,  featured: false, weight: 7  },
+  { tagId: 4,  contentType: 'page', contentId: 8,  featured: false, weight: 6  },
+
+  { tagId: 14, contentType: 'page', contentId: 9,  featured: true,  weight: 10 },
+  { tagId: 4,  contentType: 'page', contentId: 9,  featured: false, weight: 9  },
+  { tagId: 8,  contentType: 'page', contentId: 9,  featured: false, weight: 7  },
+  { tagId: 5,  contentType: 'page', contentId: 9,  featured: false, weight: 6  },
+
+  { tagId: 15, contentType: 'page', contentId: 10, featured: false, weight: 8  },
+  { tagId: 16, contentType: 'page', contentId: 10, featured: false, weight: 7  },
+
+  // Tools (page 7 = Ramp Calculator, surfaced as a distinct content type)
+  { tagId: 13, contentType: 'tool', contentId: 7, featured: true,  weight: 10 },
+  { tagId: 9,  contentType: 'tool', contentId: 7, featured: false, weight: 9  },
+  { tagId: 5,  contentType: 'tool', contentId: 7, featured: false, weight: 7  },
+]
+
+// ── Service functions ─────────────────────────────────────────────────────────
+
+// Returns per-type usage counts for a single tag
+export function computeTagUsage(tagId, contentTagLinks = mockContentTagLinks) {
+  const links = contentTagLinks.filter(l => l.tagId === tagId)
+  return {
+    articles: new Set(links.filter(l => l.contentType === 'article').map(l => l.contentId)).size,
+    pages:    new Set(links.filter(l => l.contentType === 'page').map(l => l.contentId)).size,
+    tools:    new Set(links.filter(l => l.contentType === 'tool').map(l => l.contentId)).size,
+    total:    new Set(links.map(l => `${l.contentType}:${l.contentId}`)).size,
+  }
+}
+
+// Returns category IDs linked to a tag
+export function getTagCategoryIds(tagId, categoryTagLinks = mockCategoryTagLinks) {
+  return categoryTagLinks.filter(l => l.tagId === tagId).map(l => l.categoryId)
+}
+
+// Returns tag IDs linked to a category
+export function getCategoryTagIds(categoryId, categoryTagLinks = mockCategoryTagLinks) {
+  return categoryTagLinks.filter(l => l.categoryId === categoryId).map(l => l.tagId)
+}
+
+// Given a product category, return related content sorted by shared-tag score.
+// Results are grouped by contentType and ready to hydrate from mockBlogPosts / mockPages.
+export function getRelatedContent(categoryId, { categoryTagLinks = mockCategoryTagLinks, contentTagLinks = mockContentTagLinks } = {}) {
+  const catLinks = categoryTagLinks.filter(l => l.categoryId === categoryId)
+  if (catLinks.length === 0) return { articles: [], pages: [], tools: [] }
+
+  const catTagWeight = Object.fromEntries(catLinks.map(l => [l.tagId, l.weight]))
+  const catTagIds = new Set(Object.keys(catTagWeight).map(Number))
+
+  // Score each content item: sum of (catTagWeight × contentWeight) across shared tags
+  const scoreMap = {}
+  for (const link of contentTagLinks) {
+    if (!catTagIds.has(link.tagId)) continue
+    const key = `${link.contentType}:${link.contentId}`
+    if (!scoreMap[key]) {
+      scoreMap[key] = { score: 0, featured: false, contentType: link.contentType, contentId: link.contentId }
+    }
+    scoreMap[key].score += (catTagWeight[link.tagId] ?? 1) * (link.weight ?? 1)
+    if (link.featured) scoreMap[key].featured = true
+  }
+
+  const sorted = Object.values(scoreMap).sort((a, b) =>
+    (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || b.score - a.score
+  )
+
+  return {
+    articles: sorted.filter(x => x.contentType === 'article'),
+    pages:    sorted.filter(x => x.contentType === 'page'),
+    tools:    sorted.filter(x => x.contentType === 'tool'),
+  }
+}

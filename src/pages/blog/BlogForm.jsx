@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Field, Input, Textarea, Select } from '../../components/ui/FormField'
 import { RichTextEditor } from '../../components/ui/RichTextEditor'
 import { MediaPicker } from '../../components/ui/MediaPicker'
+import { TagPicker } from '../../components/ui/TagPicker'
 import { toast } from '../../components/ui/Toast'
-import { mockBlogPosts, BLOG_CATEGORIES, mockTags } from '../../data/mockContent'
+import { mockBlogPosts, BLOG_CATEGORIES } from '../../data/mockContent'
+import { mockTags as INITIAL_TAGS, toSlug } from '../../data/mockTagging'
 
 export function BlogForm() {
   const { id } = useParams()
@@ -14,22 +16,19 @@ export function BlogForm() {
   const isNew = !id || id === 'new'
   const existing = !isNew ? mockBlogPosts.find(p => p.id === Number(id)) : null
 
+  const [allTags, setAllTags] = useState(INITIAL_TAGS)
   const [form, setForm] = useState(existing ?? {
-    title: '', category: '', excerpt: '', content: '', tags: [],
+    title: '', category: '', excerpt: '', content: '', tagIds: [],
     featuredImage: null, slug: '', metaTitle: '', metaDesc: '',
   })
-  const [tagInput, setTagInput] = useState('')
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const addTag = (name) => {
-    const trimmed = name.trim()
-    if (!trimmed || form.tags.includes(trimmed)) return
-    set('tags', [...form.tags, trimmed])
-    setTagInput('')
+  const handleCreateTag = (name, slug) => {
+    const newTag = { id: Date.now(), name, slug, description: '' }
+    setAllTags(prev => [...prev, newTag])
+    return newTag
   }
-
-  const removeTag = (t) => set('tags', form.tags.filter(x => x !== t))
 
   const handleSave = (status) => {
     toast(isNew ? `Post "${form.title || 'Untitled'}" created as ${status}` : 'Post saved', 'success')
@@ -104,36 +103,17 @@ export function BlogForm() {
         </div>
 
         <div className="bg-surface rounded-xl border border-border p-4 flex flex-col gap-3">
-          <p className="text-sm font-semibold text-text-primary">Tags</p>
-          <div className="flex gap-2">
-            <Input
-              value={tagInput}
-              onChange={e => setTagInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(tagInput) } }}
-              placeholder="Type a tag + Enter"
-              className="flex-1"
-            />
+          <div>
+            <p className="text-sm font-semibold text-text-primary">Tags</p>
+            <p className="text-xs text-text-muted mt-0.5">Link this post to product categories via shared tags</p>
           </div>
-          {/* Suggested tags */}
-          {tagInput.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {mockTags.filter(t => t.name.toLowerCase().includes(tagInput.toLowerCase()) && !form.tags.includes(t.name)).slice(0, 5).map(t => (
-                <button key={t.id} onClick={() => addTag(t.name)} className="text-xs bg-grey-100 hover:bg-brand-100 text-text-secondary hover:text-brand-600 px-2 py-1 rounded-full transition-colors">
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {form.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {form.tags.map(t => (
-                <span key={t} className="flex items-center gap-1 bg-brand-100 text-brand-600 text-xs px-2 py-1 rounded-full">
-                  {t}
-                  <button onClick={() => removeTag(t)} className="hover:text-brand-700"><X className="w-3 h-3" /></button>
-                </span>
-              ))}
-            </div>
-          )}
+          <TagPicker
+            allTags={allTags}
+            selectedIds={form.tagIds ?? []}
+            onChange={ids => set('tagIds', ids)}
+            onCreateTag={handleCreateTag}
+            placeholder="Search or create tags…"
+          />
         </div>
       </div>
     </div>

@@ -10,6 +10,13 @@ import { mockOrders, ORDER_ITEMS_MOCK } from '../../data/mockOrders'
 
 const STATUS_OPTIONS = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
 
+const ORIGIN_LABEL    = { website: 'Website', phone: 'Phone', email: 'Email', trade_portal: 'Trade Portal', in_store: 'In Store' }
+const ORIGIN_VARIANT  = { website: 'info', phone: 'grey', email: 'grey', trade_portal: 'warning', in_store: 'grey' }
+const ACCOUNT_LABEL   = { retail: 'Retail', trade: 'Trade', sda: 'SDA', ndis: 'NDIS', b2b: 'B2B' }
+const ACCOUNT_VARIANT = { retail: 'grey', trade: 'info', sda: 'warning', ndis: 'success', b2b: 'info' }
+const ORDER_TYPE_LABEL   = { standard: 'Standard items only', custom: 'Custom only', combined: 'Standard + Custom' }
+const ORDER_TYPE_VARIANT = { standard: 'grey', custom: 'info', combined: 'warning' }
+
 function SectionCard({ title, children, action }) {
   return (
     <div className="bg-surface rounded-xl border border-border p-5 flex flex-col gap-4">
@@ -115,6 +122,11 @@ export function OrderDetail() {
             <Badge variant={status} label={status.charAt(0).toUpperCase() + status.slice(1)} dot />
           </div>
           <p className="text-sm text-text-muted mt-0.5">{order.customer} · {order.date}</p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <Badge variant={ORIGIN_VARIANT[order.origin] ?? 'grey'} label={ORIGIN_LABEL[order.origin] ?? order.origin} />
+            <Badge variant={ACCOUNT_VARIANT[order.accountType] ?? 'grey'} label={ACCOUNT_LABEL[order.accountType] ?? order.accountType} />
+            <Badge variant={ORDER_TYPE_VARIANT[order.orderType] ?? 'grey'} label={ORDER_TYPE_LABEL[order.orderType] ?? order.orderType} />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -222,6 +234,20 @@ export function OrderDetail() {
               </Button>
             </SectionCard>
           )}
+
+          <SectionCard title="Datapel WMS">
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<ExternalLink className="w-4 h-4" />}
+                onClick={() => toast('Opening Datapel WMS…', 'info')}
+                className="w-full justify-center"
+              >
+                Open Datapel WMS
+              </Button>
+            </div>
+          </SectionCard>
 
           <SectionCard title="Actions">
             <div className="flex flex-col gap-2">

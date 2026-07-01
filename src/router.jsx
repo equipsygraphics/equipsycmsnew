@@ -7,14 +7,17 @@ import { ProductForm } from './pages/products/ProductForm'
 import { OrdersList } from './pages/orders/OrdersList'
 import { OrderDetail } from './pages/orders/OrderDetail'
 import { CustomersList } from './pages/customers/CustomersList'
+import { CustomerDetail } from './pages/customers/CustomerDetail'
 import { MegaMenu } from './pages/mega-menu/MegaMenu'
 import { Attributes } from './pages/attributes/Attributes'
 import { BlogList } from './pages/blog/BlogList'
 import { BlogForm } from './pages/blog/BlogForm'
 import { MediaLibrary } from './pages/media/MediaLibrary'
 import { Pages } from './pages/pages/Pages'
+import { PageDetail } from './pages/pages/PageDetail'
 import { Tags } from './pages/tags/Tags'
 import { QuoteRequests } from './pages/requests/QuoteRequests'
+import { QuoteDetail } from './pages/requests/QuoteDetail'
 import { TradeAccount } from './pages/requests/TradeAccount'
 import { BuilderPack } from './pages/requests/BuilderPack'
 import { Campaigns } from './pages/marketing/Campaigns'
@@ -45,10 +48,11 @@ export const router = createBrowserRouter([
       { path: '/orders', element: <OrdersList /> },
       { path: '/orders/:id', element: <OrderDetail /> },
       { path: '/customers', element: <CustomersList /> },
-      { path: '/customers/:id', ...ph('Customer Detail') },
+      { path: '/customers/:id', element: <CustomerDetail /> },
 
       // Content
       { path: '/pages', element: <Pages /> },
+      { path: '/pages/:id', element: <PageDetail /> },
       { path: '/tags', element: <Tags /> },
       { path: '/blog', element: <BlogList /> },
       { path: '/blog/new', element: <BlogForm /> },
@@ -57,6 +61,7 @@ export const router = createBrowserRouter([
 
       // Requests
       { path: '/quote-requests', element: <QuoteRequests /> },
+      { path: '/quote-requests/:id', element: <QuoteDetail /> },
       { path: '/trade-account', element: <TradeAccount /> },
       { path: '/builder-pack', element: <BuilderPack /> },
 
