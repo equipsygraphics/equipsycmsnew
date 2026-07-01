@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Printer, Mail, FileText, Truck, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Printer, FileText, Truck, RotateCcw, ExternalLink } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Select } from '../../components/ui/FormField'
+import { Modal } from '../../components/ui/Modal'
 import { toast } from '../../components/ui/Toast'
 import { mockOrders, ORDER_ITEMS_MOCK } from '../../data/mockOrders'
 
@@ -21,21 +22,83 @@ function SectionCard({ title, children, action }) {
   )
 }
 
+function RefundModal({ open, onClose, order, onConfirm }) {
+  const isPayPal = order.paymentMethod === 'paypal'
+  const [amount, setAmount] = useState(order.total.toFixed(2))
+
+  const handleConfirm = () => {
+    const parsed = parseFloat(amount)
+    if (isNaN(parsed) || parsed <= 0) {
+      toast('Enter a valid refund amount', 'error')
+      return
+    }
+    if (parsed > order.total) {
+      toast('Refund amount cannot exceed order total', 'error')
+      return
+    }
+    onConfirm(parsed)
+    onClose()
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Process Refund">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm text-text-secondary">
+            {isPayPal
+              ? 'This order was paid via PayPal. Enter the refund amount to process manually.'
+              : 'This order was paid via Stripe. The refund will be processed through Stripe.'}
+          </p>
+          {isPayPal && (
+            <p className="text-xs text-text-muted mt-1">
+              Confirm the amount in your PayPal merchant account after processing.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-text-secondary">Refund amount (AUD)</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">$</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              max={order.total}
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              className="w-full rounded-lg border border-border pl-7 pr-3 py-2.5 text-sm text-text-primary outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+          <p className="text-xs text-text-muted">Order total: ${order.total.toFixed(2)}</p>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" size="sm" onClick={handleConfirm}>
+            {isPayPal ? 'Confirm Refund' : 'Process via Stripe'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export function OrderDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const order = mockOrders.find(o => o.id === `#${id}`) || mockOrders[0]
 
   const [status, setStatus] = useState(order.status)
-  const [shippitDeployed, setShippitDeployed] = useState(false)
   const [notes, setNotes] = useState(order.notes)
+  const [refundOpen, setRefundOpen] = useState(false)
 
-  const shipping = order.total >= 1000 ? 0 : order.items > 0 && mockOrders[0].fulfillment === 'delivery' ? 15 : 0
+  const isClickCollect = order.fulfillment === 'click_collect'
+  const shipping = order.total >= 1000 ? 0 : !isClickCollect ? 15 : 0
   const subtotal = order.total - order.gst
-  const handleShippit = () => {
-    setShippitDeployed(true)
-    setStatus('shipped')
-    toast('Shipment deployed via Shippit (mocked)', 'success')
+
+  const handleRefundConfirm = (amount) => {
+    setStatus('refunded')
+    const via = order.paymentMethod === 'paypal' ? 'manually (PayPal)' : 'via Stripe'
+    toast(`Refund of $${amount.toFixed(2)} processed ${via}`, 'success')
   }
 
   return (
@@ -54,9 +117,22 @@ export function OrderDetail() {
           <p className="text-sm text-text-muted mt-0.5">{order.customer} · {order.date}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon={<Printer className="w-4 h-4" />} onClick={() => toast('Packing slip sent to printer (mocked)', 'info')}>Print Slip</Button>
-          <Button variant="secondary" size="sm" icon={<FileText className="w-4 h-4" />} onClick={() => toast('Invoice PDF generated (mocked)', 'success')}>Invoice</Button>
-          <Button variant="secondary" size="sm" icon={<Mail className="w-4 h-4" />} onClick={() => toast(`Email sent to ${order.email} (mocked)`, 'success')}>Email Customer</Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Printer className="w-4 h-4" />}
+            onClick={() => toast('Opening WMS to print packing slip…', 'info')}
+          >
+            Print Slip
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<FileText className="w-4 h-4" />}
+            onClick={() => toast('Opening WMS to generate invoice…', 'info')}
+          >
+            Invoice
+          </Button>
         </div>
       </div>
 
@@ -118,43 +194,57 @@ export function OrderDetail() {
               <p className="text-text-muted">{order.email}</p>
               <p className="text-text-muted">{order.phone}</p>
             </div>
+            {order.billingAddress && (
+              <div className="flex flex-col gap-1 pt-3 border-t border-border text-sm">
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Billing Address</p>
+                <p className="text-text-secondary">{order.billingAddress}</p>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard title="Delivery">
             <div className="flex flex-col gap-2 text-sm">
-              <Badge variant={order.fulfillment === 'delivery' ? 'info' : 'grey'} label={order.fulfillment === 'delivery' ? 'Delivery' : 'Click & Collect'} />
+              <Badge variant={isClickCollect ? 'grey' : 'info'} label={isClickCollect ? 'Click & Collect' : 'Delivery'} />
               <p className="text-text-secondary">{order.address}</p>
             </div>
           </SectionCard>
 
-          <SectionCard title="Shippit">
-            {shippitDeployed ? (
-              <div className="flex flex-col gap-1">
-                <Badge variant="success" label="Shipment Deployed" dot />
-                <p className="text-xs text-text-muted mt-1">Tracking number: SHP-{order.id.replace('#','')}-MOCK</p>
-              </div>
-            ) : (
+          {!isClickCollect && (
+            <SectionCard title="Shippit">
               <Button
                 variant="primary"
                 size="sm"
-                icon={<Truck className="w-4 h-4" />}
-                onClick={handleShippit}
+                icon={<ExternalLink className="w-4 h-4" />}
+                onClick={() => toast('Opening Shippit dashboard…', 'info')}
                 className="w-full justify-center"
               >
-                Deploy Shipment
+                Open Shippit
               </Button>
-            )}
-          </SectionCard>
+            </SectionCard>
+          )}
 
           <SectionCard title="Actions">
             <div className="flex flex-col gap-2">
-              <Button variant="secondary" size="sm" icon={<RotateCcw className="w-4 h-4" />} onClick={() => { setStatus('refunded'); toast('Refund processed (mocked)', 'success') }} className="w-full justify-center">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<RotateCcw className="w-4 h-4" />}
+                onClick={() => setRefundOpen(true)}
+                className="w-full justify-center"
+              >
                 Refund / Return
               </Button>
             </div>
           </SectionCard>
         </div>
       </div>
+
+      <RefundModal
+        open={refundOpen}
+        onClose={() => setRefundOpen(false)}
+        order={order}
+        onConfirm={handleRefundConfirm}
+      />
     </div>
   )
 }
