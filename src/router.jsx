@@ -19,6 +19,7 @@ import { Tags } from './pages/tags/Tags'
 import { QuoteRequests } from './pages/requests/QuoteRequests'
 import { QuoteDetail } from './pages/requests/QuoteDetail'
 import { TradeAccount } from './pages/requests/TradeAccount'
+import { TradeAccountDetail } from './pages/requests/TradeAccountDetail'
 import { BuilderPack } from './pages/requests/BuilderPack'
 import { Campaigns } from './pages/marketing/Campaigns'
 import { Coupons } from './pages/marketing/Coupons'
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
       { path: '/quote-requests', element: <QuoteRequests /> },
       { path: '/quote-requests/:id', element: <QuoteDetail /> },
       { path: '/trade-account', element: <TradeAccount /> },
+      { path: '/trade-account/:id', element: <TradeAccountDetail /> },
       { path: '/builder-pack', element: <BuilderPack /> },
 
       // Marketing
