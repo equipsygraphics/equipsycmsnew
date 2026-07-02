@@ -59,14 +59,14 @@ export function TradeAccount() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-grey-50">
-              {['Company', 'ABN', 'Contact', 'Type', 'Applied', 'Credit Limit', 'Status', ''].map((h, i) => (
+              {['Company', 'ABN', 'Contact', 'Type', 'Applied', 'Status', ''].map((h, i) => (
                 <th key={i} className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0
-              ? <tr><td colSpan={8} className="px-5 py-12 text-center text-text-muted">No applications found.</td></tr>
+              ? <tr><td colSpan={7} className="px-5 py-12 text-center text-text-muted">No applications found.</td></tr>
               : filtered.map(acct => (
                 <tr key={acct.id}
                   onClick={() => navigate(`/trade-account/${acct.id}`)}
@@ -81,7 +81,6 @@ export function TradeAccount() {
                   <td className="px-5 py-3.5 text-text-secondary">{acct.contact}</td>
                   <td className="px-5 py-3.5 text-text-secondary">{acct.type}</td>
                   <td className="px-5 py-3.5 text-text-muted whitespace-nowrap">{acct.applied}</td>
-                  <td className="px-5 py-3.5 text-text-secondary">{acct.creditLimit ? `$${acct.creditLimit.toLocaleString()}` : '—'}</td>
                   <td className="px-5 py-3.5"><Badge variant={STATUS_VARIANT[acct.status]} label={acct.status.charAt(0).toUpperCase() + acct.status.slice(1)} dot /></td>
                   <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
                     <Button variant="secondary" size="sm" onClick={() => navigate(`/trade-account/${acct.id}`)}>Review</Button>
