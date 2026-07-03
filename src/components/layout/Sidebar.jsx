@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShoppingBag, Tag, Navigation, ShoppingCart, Users,
   FileText, Hash, BookOpen, FolderOpen, MessageSquare, Briefcase, Package,
   Megaphone, Ticket, Mail, Rss, BarChart2, Globe, Search, Settings, UserCog, Sliders,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, Star, ClipboardList,
 } from 'lucide-react'
 
 const NAV = [
@@ -24,6 +24,12 @@ const NAV = [
       { label: 'Tags', icon: Hash, to: '/tags' },
       { label: 'Blog', icon: BookOpen, to: '/blog' },
       { label: 'Media & Resources', icon: FolderOpen, to: '/media' },
+    ],
+  },
+  {
+    label: 'Customer Feedback', icon: Star, children: [
+      { label: 'Checkout Feedback', icon: Star, to: '/feedback' },
+      { label: 'OT Feedback', icon: ClipboardList, to: '/ot-feedback' },
     ],
   },
   {

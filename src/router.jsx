@@ -18,6 +18,10 @@ import { PageDetail } from './pages/pages/PageDetail'
 import { Tags } from './pages/tags/Tags'
 import { QuoteRequests } from './pages/requests/QuoteRequests'
 import { QuoteDetail } from './pages/requests/QuoteDetail'
+import { FeedbackList } from './pages/feedback/FeedbackList'
+import { FeedbackDetail } from './pages/feedback/FeedbackDetail'
+import { OTFeedbackList } from './pages/feedback/OTFeedbackList'
+import { OTFeedbackDetail } from './pages/feedback/OTFeedbackDetail'
 import { TradeAccount } from './pages/requests/TradeAccount'
 import { TradeAccountDetail } from './pages/requests/TradeAccountDetail'
 import { BuilderPack } from './pages/requests/BuilderPack'
@@ -50,6 +54,10 @@ export const router = createBrowserRouter([
       { path: '/orders/:id', element: <OrderDetail /> },
       { path: '/customers', element: <CustomersList /> },
       { path: '/customers/:id', element: <CustomerDetail /> },
+      { path: '/feedback', element: <FeedbackList /> },
+      { path: '/feedback/:id', element: <FeedbackDetail /> },
+      { path: '/ot-feedback', element: <OTFeedbackList /> },
+      { path: '/ot-feedback/:id', element: <OTFeedbackDetail /> },
 
       // Content
       { path: '/pages', element: <Pages /> },
