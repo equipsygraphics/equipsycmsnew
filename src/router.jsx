@@ -25,6 +25,7 @@ import { OTFeedbackDetail } from './pages/feedback/OTFeedbackDetail'
 import { TradeAccount } from './pages/requests/TradeAccount'
 import { TradeAccountDetail } from './pages/requests/TradeAccountDetail'
 import { BuilderPack } from './pages/requests/BuilderPack'
+import { BuilderPackDetail } from './pages/requests/BuilderPackDetail'
 import { Campaigns } from './pages/marketing/Campaigns'
 import { Coupons } from './pages/marketing/Coupons'
 import { Emails } from './pages/marketing/Emails'
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: '/trade-account', element: <TradeAccount /> },
       { path: '/trade-account/:id', element: <TradeAccountDetail /> },
       { path: '/builder-pack', element: <BuilderPack /> },
+      { path: '/builder-pack/:id', element: <BuilderPackDetail /> },
 
       // Marketing
       { path: '/campaigns', element: <Campaigns /> },
