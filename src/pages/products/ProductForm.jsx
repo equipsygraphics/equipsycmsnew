@@ -218,7 +218,7 @@ function ProductGalleryCard({ form, setForm }) {
             <Upload className="w-4 h-4 text-text-muted" />
           </div>
           <p className="text-xs font-medium text-brand-500">Add media</p>
-          <p className="text-[10px] text-text-muted leading-tight text-center px-2">SVG, PNG, JPG or GIF (max. 30MB)</p>
+          <p className="text-[10px] text-text-muted leading-tight text-center px-2">1080×1080px recommended · max 30MB</p>
         </button>
       </div>
       <MediaLibraryModal open={modalOpen} onClose={() => setModalOpen(false)} onSelect={handleSelect} />
@@ -604,7 +604,7 @@ function TabCompletedInstalls({ form, setForm }) {
               <Upload className="w-4 h-4 text-text-muted" />
             </div>
             <p className="text-xs font-medium text-brand-500">Add media</p>
-            <p className="text-[10px] text-text-muted leading-tight text-center px-2">SVG, PNG, JPG or GIF (max. 30MB)</p>
+            <p className="text-[10px] text-text-muted leading-tight text-center px-2">1920×1080px recommended · max 30MB</p>
           </button>
         </div>
         <MediaLibraryModal open={modalOpen} onClose={() => setModalOpen(false)} onSelect={handleSelect} />

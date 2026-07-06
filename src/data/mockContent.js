@@ -1,14 +1,14 @@
-export const BLOG_CATEGORIES = ['Guides', 'Products', 'DIY', 'NDIS', 'Safety', 'Technical']
+export const BLOG_CATEGORIES = ['Case Studies', 'Innovation', 'News & Media', 'Product', 'Saver Living', 'Tips']
 
 export const mockBlogPosts = [
-  { id: 1, title: 'Understanding SDA Housing Requirements', category: 'Guides', author: 'Sarah M.', date: '20 Jun 2026', status: 'published', featuredImage: null, tags: ['SDA', 'Housing'], excerpt: 'A comprehensive guide to SDA housing requirements for accessibility modifications.', content: '' },
-  { id: 2, title: 'Top 5 Bathroom Safety Products for 2026', category: 'Products', author: 'Tom K.', date: '18 Jun 2026', status: 'published', featuredImage: null, tags: ['Bathroom', 'Safety'], excerpt: '', content: '' },
-  { id: 3, title: 'How to Install Grab Rails: A Guide', category: 'DIY', author: 'Tom K.', date: '15 Jun 2026', status: 'published', featuredImage: null, tags: ['Installation', 'DIY'], excerpt: '', content: '' },
-  { id: 4, title: 'NDIS Funding for Home Modifications', category: 'NDIS', author: 'Sarah M.', date: '12 Jun 2026', status: 'published', featuredImage: null, tags: ['NDIS', 'Funding'], excerpt: '', content: '' },
-  { id: 5, title: 'Choosing the Right Shower Seat', category: 'Guides', author: 'Tom K.', date: '8 Jun 2026', status: 'published', featuredImage: null, tags: ['Shower Seats'], excerpt: '', content: '' },
-  { id: 6, title: 'Anti-Slip Solutions for Every Home', category: 'Safety', author: 'Sarah M.', date: null, status: 'draft', featuredImage: null, tags: ['Anti-Slip'], excerpt: '', content: '' },
-  { id: 7, title: 'Ramp Specifications & Standards', category: 'Technical', author: 'Tom K.', date: null, status: 'draft', featuredImage: null, tags: ['Ramps', 'Standards'], excerpt: '', content: '' },
-  { id: 8, title: 'New Range: Concealed Fix Grab Rails', category: 'Products', author: 'Sarah M.', date: null, status: 'draft', featuredImage: null, tags: ['Grab Rails'], excerpt: '', content: '' },
+  { id: 1, title: 'Understanding SDA Housing Requirements', category: 'Case Studies', author: 'Sarah M.', date: '20 Jun 2026', status: 'published', featuredImage: null, tags: ['SDA', 'Housing'], excerpt: 'A comprehensive guide to SDA housing requirements for accessibility modifications.', content: '' },
+  { id: 2, title: 'Top 5 Bathroom Safety Products for 2026', category: 'Product', author: 'Tom K.', date: '18 Jun 2026', status: 'published', featuredImage: null, tags: ['Bathroom', 'Safety'], excerpt: '', content: '' },
+  { id: 3, title: 'How to Install Grab Rails: A Guide', category: 'Tips', author: 'Tom K.', date: '15 Jun 2026', status: 'published', featuredImage: null, tags: ['Installation', 'DIY'], excerpt: '', content: '' },
+  { id: 4, title: 'NDIS Funding for Home Modifications', category: 'News & Media', author: 'Sarah M.', date: '12 Jun 2026', status: 'published', featuredImage: null, tags: ['NDIS', 'Funding'], excerpt: '', content: '' },
+  { id: 5, title: 'Choosing the Right Shower Seat', category: 'Tips', author: 'Tom K.', date: '8 Jun 2026', status: 'published', featuredImage: null, tags: ['Shower Seats'], excerpt: '', content: '' },
+  { id: 6, title: 'Anti-Slip Solutions for Every Home', category: 'Saver Living', author: 'Sarah M.', date: null, status: 'draft', featuredImage: null, tags: ['Anti-Slip'], excerpt: '', content: '' },
+  { id: 7, title: 'Ramp Specifications & Standards', category: 'Innovation', author: 'Tom K.', date: null, status: 'draft', featuredImage: null, tags: ['Ramps', 'Standards'], excerpt: '', content: '' },
+  { id: 8, title: 'New Range: Concealed Fix Grab Rails', category: 'Product', author: 'Sarah M.', date: null, status: 'draft', featuredImage: null, tags: ['Grab Rails'], excerpt: '', content: '' },
 ]
 
 export { mockTags } from './mockTagging'

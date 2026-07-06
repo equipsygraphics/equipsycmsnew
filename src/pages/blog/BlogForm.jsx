@@ -100,6 +100,7 @@ export function BlogForm() {
         <div className="bg-surface rounded-xl border border-border p-4 flex flex-col gap-3">
           <p className="text-sm font-semibold text-text-primary">Featured Image</p>
           <MediaPicker value={form.featuredImage ? [form.featuredImage] : []} onChange={v => set('featuredImage', v[0] ?? null)} label="Upload featured image" accept="image/*" />
+          <p className="text-[10px] text-text-muted">Recommended: 1200×630px (16:9)</p>
         </div>
 
         <div className="bg-surface rounded-xl border border-border p-4 flex flex-col gap-3">

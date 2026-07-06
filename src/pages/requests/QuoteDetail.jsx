@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, Download, FileText, CheckCircle, X, Send, Mail,
-  Plus, Trash2, AlertTriangle, ShoppingCart, Lock, ExternalLink, Package, Truck, Weight,
+  Plus, Trash2, AlertTriangle, ShoppingCart, Lock, ExternalLink, Package, Truck, Weight, Sliders,
 } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -13,8 +13,8 @@ import { mockProducts } from '../../data/mockProducts'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const QUOTE_TYPE_LABEL   = { standard: 'Standard Items', freight: 'Freight', shower_base: 'Shower Base Insert' }
-const QUOTE_TYPE_VARIANT = { standard: 'info', freight: 'warning', shower_base: 'grey' }
+const QUOTE_TYPE_LABEL   = { standard: 'Standard Items', freight: 'Freight', shower_base: 'Shower Base Insert', ramp_calculator: 'Ramp Calculator' }
+const QUOTE_TYPE_VARIANT = { standard: 'info', freight: 'warning', shower_base: 'grey', ramp_calculator: 'info' }
 
 const STATUS_LABEL = {
   freight_requested: 'Freight Requested',
@@ -361,6 +361,37 @@ function ShowerBaseDimensions({ dimensions }) {
   )
 }
 
+// ── Ramp specifications ───────────────────────────────────────────────────────
+
+function RampSpecifications({ rampSpec, calculatorType }) {
+  const s = rampSpec ?? {}
+  const calcLabel = calculatorType === 'depth' ? 'Ramp Depth Calculator' : calculatorType === 'gradient' ? 'Ramp Gradient Calculator' : calculatorType
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-4">
+        {[['Rise (mm)', s.rise], ['Width (mm)', s.width], ['Ramp Run (mm)', s.depth], ['Gradient', s.gradient]].map(([l, v]) => (
+          <div key={l} className="flex flex-col gap-0.5">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">{l}</p>
+            <p className="text-sm text-text-primary">{v ?? '—'}</p>
+          </div>
+        ))}
+        {calcLabel && (
+          <div className="col-span-2 flex flex-col gap-0.5">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Calculator used</p>
+            <p className="text-sm text-text-primary">{calcLabel}</p>
+          </div>
+        )}
+      </div>
+      <div className="flex items-start gap-2 bg-warning-50 px-3 py-2.5 rounded-lg">
+        <Lock className="w-3.5 h-3.5 text-warning-500 shrink-0 mt-0.5" />
+        <p className="text-xs text-warning-700">
+          Ramp Calculator quotes are auto-generated from customer-submitted measurements. To change specifications, the customer must use the Ramp Calculator and submit a new request.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ── Totals block ──────────────────────────────────────────────────────────────
 
 function TotalsBlock({ items, shippingCost, overrideTotal }) {
@@ -643,26 +674,38 @@ export function QuoteDetail() {
         <div className="col-span-2 flex flex-col gap-4">
 
           {/* Items / Dimensions */}
-          <SectionCard title={quote.quoteType === 'shower_base' ? 'Shower Base Specifications' : 'Quoted Items'}>
+          <SectionCard title={
+            quote.quoteType === 'shower_base'     ? 'Shower Base Specifications' :
+            quote.quoteType === 'ramp_calculator' ? 'Ramp Specifications' :
+            'Quoted Items'
+          }>
             {quote.quoteType === 'shower_base'
               ? <ShowerBaseDimensions dimensions={quote.dimensions} />
-              : editMode
-                ? <EditableItems
-                    items={editItems}
-                    shippingCost={editShipping}
-                    computedShipping={autoShipping}
-                    quoteType={quote.quoteType}
-                    account={quote.account}
-                    fulfillment={editFulfillment}
-                    onChange={setEditItems}
-                    onShippingChange={setEditShipping}
-                  />
-                : <ReadOnlyItems
-                    items={quote.items}
-                    shippingCost={quote.shippingCost}
-                    quoteType={quote.quoteType}
-                    fulfillment={quote.fulfillment}
-                  />
+              : quote.quoteType === 'ramp_calculator'
+                ? <>
+                    <RampSpecifications rampSpec={quote.rampSpec} calculatorType={quote.calculatorType} />
+                    <div className="border-t border-border pt-4 mt-2">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-3">Auto-generated Items</p>
+                      <ReadOnlyItems items={quote.items} shippingCost={quote.shippingCost} quoteType={quote.quoteType} fulfillment={quote.fulfillment} />
+                    </div>
+                  </>
+                : editMode
+                  ? <EditableItems
+                      items={editItems}
+                      shippingCost={editShipping}
+                      computedShipping={autoShipping}
+                      quoteType={quote.quoteType}
+                      account={quote.account}
+                      fulfillment={editFulfillment}
+                      onChange={setEditItems}
+                      onShippingChange={setEditShipping}
+                    />
+                  : <ReadOnlyItems
+                      items={quote.items}
+                      shippingCost={quote.shippingCost}
+                      quoteType={quote.quoteType}
+                      fulfillment={quote.fulfillment}
+                    />
             }
 
             {!isFreightReq && (
@@ -729,6 +772,14 @@ export function QuoteDetail() {
                 <p className="text-xs text-warning-600 bg-warning-50 px-3 py-2 rounded-lg">
                   Shower base quotes cannot be edited — customer must submit a new request for changes.
                 </p>
+              )}
+              {quote.quoteType === 'ramp_calculator' && (
+                <div className="flex items-start gap-1.5 bg-warning-50 px-3 py-2 rounded-lg">
+                  <Sliders className="w-3.5 h-3.5 text-warning-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning-700">
+                    Auto-generated quote — cannot be edited. Customer must resubmit via the Ramp Calculator.
+                  </p>
+                </div>
               )}
             </div>
           </SectionCard>

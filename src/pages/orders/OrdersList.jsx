@@ -16,6 +16,9 @@ const STATUS_TABS = [
   { key: 'delivered', label: 'Delivered' },
 ]
 
+const FULFILLMENT_LABEL   = { delivery: 'Delivery', click_collect: 'Click & Collect' }
+const FULFILLMENT_VARIANT = { delivery: 'info', click_collect: 'success' }
+
 const ORIGIN_LABEL    = { website: 'Website', phone: 'Phone', email: 'Email', trade_portal: 'Trade Portal', in_store: 'In Store' }
 const ORIGIN_VARIANT  = { website: 'info', phone: 'grey', email: 'grey', trade_portal: 'warning', in_store: 'grey' }
 const ACCOUNT_LABEL   = { retail: 'Retail', trade: 'Trade', sda: 'SDA', ndis: 'NDIS', b2b: 'B2B' }
@@ -96,6 +99,7 @@ export function OrdersList() {
   const setFilter = (key, val) => setFilters(f => ({ ...f, [key]: val }))
   const hasFilters = Object.values(filters).some(Boolean)
 
+
   const handleSort = (field) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortField(field); setSortDir('desc') }
@@ -137,7 +141,7 @@ export function OrdersList() {
         }
       />
 
-      {/* Tabs + search */}
+      {/* Status tabs + search */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex border-b border-border">
           {STATUS_TABS.map(tab => (
@@ -212,7 +216,7 @@ export function OrdersList() {
               <th className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">Items</th>
               <SortTh label="Total" field="total" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
               <th className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">Order Type</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">Payment</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">Fulfillment</th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">Status</th>
               <th className="px-5 py-3" />
             </tr>
@@ -237,7 +241,9 @@ export function OrdersList() {
                 <td className="px-5 py-3.5">
                   <Badge variant={ORDER_TYPE_VARIANT[o.orderType] ?? 'grey'} label={ORDER_TYPE_LABEL[o.orderType] ?? o.orderType} />
                 </td>
-                <td className="px-5 py-3.5"><Badge variant={o.payment} label={o.payment.charAt(0).toUpperCase() + o.payment.slice(1)} /></td>
+                <td className="px-5 py-3.5">
+                  <Badge variant={FULFILLMENT_VARIANT[o.fulfillment] ?? 'grey'} label={FULFILLMENT_LABEL[o.fulfillment] ?? o.fulfillment} />
+                </td>
                 <td className="px-5 py-3.5"><Badge variant={o.status} label={o.status.charAt(0).toUpperCase() + o.status.slice(1)} dot /></td>
                 <td className="px-5 py-3.5">
                   <button onClick={e => { e.stopPropagation(); navigate(`/orders/${o.id.replace('#','')}`); }} className="p-1.5 rounded-md text-text-muted hover:text-brand-500 hover:bg-brand-50">

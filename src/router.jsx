@@ -16,12 +16,18 @@ import { MediaLibrary } from './pages/media/MediaLibrary'
 import { Pages } from './pages/pages/Pages'
 import { PageDetail } from './pages/pages/PageDetail'
 import { Tags } from './pages/tags/Tags'
+import { TagDetail } from './pages/tags/TagDetail'
 import { QuoteRequests } from './pages/requests/QuoteRequests'
 import { QuoteDetail } from './pages/requests/QuoteDetail'
 import { FeedbackList } from './pages/feedback/FeedbackList'
 import { FeedbackDetail } from './pages/feedback/FeedbackDetail'
 import { OTFeedbackList } from './pages/feedback/OTFeedbackList'
 import { OTFeedbackDetail } from './pages/feedback/OTFeedbackDetail'
+import { FormsList } from './pages/forms/FormsList'
+import { FormDetail } from './pages/forms/FormDetail'
+import { EnquiryList } from './pages/enquiries/EnquiryList'
+import { EnquiryDetail } from './pages/enquiries/EnquiryDetail'
+import { Subscribers } from './pages/subscribers/Subscribers'
 import { TradeAccount } from './pages/requests/TradeAccount'
 import { TradeAccountDetail } from './pages/requests/TradeAccountDetail'
 import { BuilderPack } from './pages/requests/BuilderPack'
@@ -64,10 +70,24 @@ export const router = createBrowserRouter([
       { path: '/pages', element: <Pages /> },
       { path: '/pages/:id', element: <PageDetail /> },
       { path: '/tags', element: <Tags /> },
+      { path: '/tags/new', element: <TagDetail /> },
+      { path: '/tags/:id', element: <TagDetail /> },
       { path: '/blog', element: <BlogList /> },
       { path: '/blog/new', element: <BlogForm /> },
       { path: '/blog/:id', element: <BlogForm /> },
       { path: '/media', element: <MediaLibrary /> },
+
+      // Forms
+      { path: '/forms', element: <FormsList /> },
+      { path: '/forms/new', element: <FormDetail /> },
+      { path: '/forms/:id', element: <FormDetail /> },
+
+      // Enquiries
+      { path: '/enquiries', element: <EnquiryList /> },
+      { path: '/enquiries/:id', element: <EnquiryDetail /> },
+
+      // Subscribers
+      { path: '/subscribers', element: <Subscribers /> },
 
       // Requests
       { path: '/quote-requests', element: <QuoteRequests /> },

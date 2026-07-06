@@ -7,69 +7,85 @@ export function toSlug(name) {
 // ── Tags ──────────────────────────────────────────────────────────────────────
 
 export const mockTags = [
-  { id: 1,  name: 'SDA',                slug: 'sda',                 description: 'Specialist Disability Accommodation content' },
-  { id: 2,  name: 'NDIS',               slug: 'ndis',                description: 'National Disability Insurance Scheme' },
-  { id: 3,  name: 'Housing',             slug: 'housing',             description: '' },
-  { id: 4,  name: 'Bathroom',            slug: 'bathroom',            description: 'Bathroom accessibility products and guides' },
-  { id: 5,  name: 'Safety',              slug: 'safety',              description: '' },
-  { id: 6,  name: 'Installation',        slug: 'installation',        description: '' },
-  { id: 7,  name: 'DIY',                 slug: 'diy',                 description: '' },
-  { id: 8,  name: 'Grab Rails',          slug: 'grab-rails',          description: '' },
-  { id: 9,  name: 'Ramps',               slug: 'ramps',               description: '' },
-  { id: 10, name: 'Standards',           slug: 'standards',           description: 'AS/NZS compliance and building standards' },
-  { id: 11, name: 'Anti-Slip',           slug: 'anti-slip',           description: '' },
-  { id: 12, name: 'Shower Seats',        slug: 'shower-seats',        description: '' },
-  { id: 13, name: 'Ramp Calculator',     slug: 'ramp-calculator',     description: 'Related to the ramp rise/run calculator tool' },
-  { id: 14, name: 'Accessible Bathroom', slug: 'accessible-bathroom', description: 'Accessible bathroom design guides and products' },
-  { id: 15, name: 'Builder',             slug: 'builder',             description: 'Content relevant to builders and contractors' },
-  { id: 16, name: 'OT',                  slug: 'ot',                  description: 'Content relevant to occupational therapists' },
+  { id: 1,  name: 'Grab Rails',          slug: 'grab-rails',          description: 'Grab rails and hand supports for bathrooms, toilets, and showers' },
+  { id: 2,  name: 'NDIS',               slug: 'ndis',                description: 'National Disability Insurance Scheme funded products and guides' },
+  { id: 3,  name: 'Aged Care',           slug: 'aged-care',           description: 'Products and content suited to aged care and senior living' },
+  { id: 4,  name: 'Bathroom Safety',     slug: 'bathroom-safety',     description: 'Bathroom accessibility and safety products' },
+  { id: 5,  name: 'Wet Area',            slug: 'wet-area',            description: 'Wet area and shower-zone products and installation guides' },
+  { id: 6,  name: 'DIY Install',         slug: 'diy-install',         description: 'Products and guides suitable for DIY installation' },
+  { id: 7,  name: 'Anti-Slip',           slug: 'anti-slip',           description: 'Anti-slip surfaces, coatings, tape, and mats' },
+  { id: 8,  name: 'Shower Rails',        slug: 'shower-rails',        description: 'Rails and supports specifically for shower and wet areas' },
+  { id: 9,  name: 'Ramps',               slug: 'ramps',               description: 'Portable, modular, and threshold access ramps' },
+  { id: 10, name: 'AS1428 Compliant',    slug: 'as1428',              description: 'Products and guides meeting AS1428 accessibility standards' },
+  { id: 11, name: 'Step Nosings',        slug: 'step-nosings',        description: 'Stair nosings, edge protectors, and step safety products' },
+  { id: 12, name: 'Shower Seats',        slug: 'shower-seats',        description: 'Shower seats, benches, and fold-down seating' },
+  { id: 13, name: 'Ramp Calculator',     slug: 'ramp-calculator',     description: 'Related to the online ramp rise/run calculator tool' },
+  { id: 14, name: 'Accessible Bathroom', slug: 'accessible-bathroom', description: 'Accessible bathroom design — full room guides and product bundles' },
+  { id: 15, name: 'Builder Pack',        slug: 'builder-pack',        description: 'Content relevant to builders, certifiers, and contractors' },
+  { id: 16, name: 'OT Recommended',      slug: 'ot-recommended',      description: 'Products and guides recommended by occupational therapists' },
+  { id: 17, name: 'Handrails',           slug: 'handrails',           description: 'Internal and external handrails for stairs and ramps' },
+  { id: 18, name: 'Lever Taps',          slug: 'lever-taps',          description: 'Lever-action tapware for accessible bathrooms and kitchens' },
+  { id: 19, name: 'Concealed Fix',        slug: 'concealed-fix',        description: 'Concealed-fixings range — no exposed screws or flanges' },
+  { id: 21, name: 'Daily Living Aids',    slug: 'daily-living-aids',    description: 'Assistive devices and technology for independent daily living' },
+  { id: 22, name: 'Door Hardware',        slug: 'door-hardware',        description: 'Accessible door handles, hinges, pull straps, and door magnets' },
 ]
 
 // ── Category ↔ Tag links (explicit pivot) ────────────────────────────────────
 // weight: higher = surfaces first in related content queries
 
 export const mockCategoryTagLinks = [
-  // Cat 1: Ramps & Access
-  { categoryId: 1, tagId: 9,  weight: 10 },
-  { categoryId: 1, tagId: 13, weight: 9  },
-  { categoryId: 1, tagId: 11, weight: 8  },
-  { categoryId: 1, tagId: 10, weight: 6  },
-  { categoryId: 1, tagId: 5,  weight: 5  },
-  { categoryId: 1, tagId: 6,  weight: 4  },
-  { categoryId: 1, tagId: 7,  weight: 3  },
-  { categoryId: 1, tagId: 15, weight: 4  },
+  // Cat 1: Ramps & Access → primary: Ramps
+  { categoryId: 1, tagId: 9,  weight: 10 }, // Ramps (primary)
+  { categoryId: 1, tagId: 13, weight: 9  }, // Ramp Calculator
+  { categoryId: 1, tagId: 7,  weight: 8  }, // Anti-Slip
+  { categoryId: 1, tagId: 10, weight: 7  }, // AS1428 Compliant
+  { categoryId: 1, tagId: 17, weight: 6  }, // Handrails
+  { categoryId: 1, tagId: 6,  weight: 5  }, // DIY Install
+  { categoryId: 1, tagId: 15, weight: 4  }, // Builder Pack
 
-  // Cat 2: Steps, Nosings & Transitions
-  { categoryId: 2, tagId: 11, weight: 10 },
-  { categoryId: 2, tagId: 5,  weight: 8  },
-  { categoryId: 2, tagId: 10, weight: 7  },
-  { categoryId: 2, tagId: 6,  weight: 6  },
+  // Cat 2: Steps, Nosings & Transitions → primary: Step Nosings
+  { categoryId: 2, tagId: 11, weight: 10 }, // Step Nosings (primary)
+  { categoryId: 2, tagId: 7,  weight: 9  }, // Anti-Slip
+  { categoryId: 2, tagId: 10, weight: 7  }, // AS1428 Compliant
+  { categoryId: 2, tagId: 6,  weight: 6  }, // DIY Install
+  { categoryId: 2, tagId: 15, weight: 4  }, // Builder Pack
 
-  // Cat 3: Grab Rails & Hand Support
-  { categoryId: 3, tagId: 8,  weight: 10 },
-  { categoryId: 3, tagId: 14, weight: 8  },
-  { categoryId: 3, tagId: 4,  weight: 7  },
-  { categoryId: 3, tagId: 5,  weight: 6  },
-  { categoryId: 3, tagId: 6,  weight: 5  },
-  { categoryId: 3, tagId: 7,  weight: 4  },
-  { categoryId: 3, tagId: 16, weight: 5  },
+  // Cat 3: Grab Rails & Hand Support → primary: Grab Rails
+  { categoryId: 3, tagId: 1,  weight: 10 }, // Grab Rails (primary)
+  { categoryId: 3, tagId: 8,  weight: 9  }, // Shower Rails
+  { categoryId: 3, tagId: 4,  weight: 8  }, // Bathroom Safety
+  { categoryId: 3, tagId: 14, weight: 7  }, // Accessible Bathroom
+  { categoryId: 3, tagId: 19, weight: 6  }, // Concealed Fix
+  { categoryId: 3, tagId: 16, weight: 6  }, // OT Recommended
+  { categoryId: 3, tagId: 6,  weight: 5  }, // DIY Install
+  { categoryId: 3, tagId: 2,  weight: 4  }, // NDIS
 
-  // Cat 4: Accessible Shower & Wet Areas
-  { categoryId: 4, tagId: 4,  weight: 10 },
-  { categoryId: 4, tagId: 12, weight: 9  },
-  { categoryId: 4, tagId: 14, weight: 8  },
-  { categoryId: 4, tagId: 5,  weight: 6  },
-  { categoryId: 4, tagId: 2,  weight: 5  },
+  // Cat 4: Accessible Shower & Wet Areas → primary: Wet Area
+  { categoryId: 4, tagId: 5,  weight: 10 }, // Wet Area (primary)
+  { categoryId: 4, tagId: 12, weight: 9  }, // Shower Seats
+  { categoryId: 4, tagId: 8,  weight: 8  }, // Shower Rails
+  { categoryId: 4, tagId: 4,  weight: 8  }, // Bathroom Safety
+  { categoryId: 4, tagId: 14, weight: 7  }, // Accessible Bathroom
+  { categoryId: 4, tagId: 2,  weight: 5  }, // NDIS
 
-  // Cat 5: Taps and Bathroom Solutions
-  { categoryId: 5, tagId: 4,  weight: 9  },
-  { categoryId: 5, tagId: 14, weight: 7  },
-  { categoryId: 5, tagId: 5,  weight: 5  },
+  // Cat 5: Taps and Bathroom Solutions → primary: Lever Taps
+  { categoryId: 5, tagId: 18, weight: 10 }, // Lever Taps (primary)
+  { categoryId: 5, tagId: 4,  weight: 9  }, // Bathroom Safety
+  { categoryId: 5, tagId: 14, weight: 7  }, // Accessible Bathroom
+  { categoryId: 5, tagId: 5,  weight: 6  }, // Wet Area
+  { categoryId: 5, tagId: 16, weight: 5  }, // OT Recommended
 
-  // Cat 7: Door Solutions
-  { categoryId: 7, tagId: 5,  weight: 8  },
-  { categoryId: 7, tagId: 6,  weight: 7  },
-  { categoryId: 7, tagId: 15, weight: 5  },
+  // Cat 6: Assistive Technology → primary: Daily Living Aids
+  { categoryId: 6, tagId: 21, weight: 10 }, // Daily Living Aids (primary)
+  { categoryId: 6, tagId: 2,  weight: 8  }, // NDIS
+  { categoryId: 6, tagId: 16, weight: 7  }, // OT Recommended
+  { categoryId: 6, tagId: 3,  weight: 6  }, // Aged Care
+
+  // Cat 7: Door Solutions → primary: Door Hardware
+  { categoryId: 7, tagId: 22, weight: 10 }, // Door Hardware (primary)
+  { categoryId: 7, tagId: 10, weight: 7  }, // AS1428 Compliant
+  { categoryId: 7, tagId: 6,  weight: 6  }, // DIY Install
+  { categoryId: 7, tagId: 15, weight: 5  }, // Builder Pack
 ]
 
 // ── Content ↔ Tag links (polymorphic pivot) ───────────────────────────────────
@@ -128,10 +144,9 @@ export const mockContentTagLinks = [
   { tagId: 15, contentType: 'page', contentId: 10, featured: false, weight: 8  },
   { tagId: 16, contentType: 'page', contentId: 10, featured: false, weight: 7  },
 
-  // Tools (page 7 = Ramp Calculator, surfaced as a distinct content type)
-  { tagId: 13, contentType: 'tool', contentId: 7, featured: true,  weight: 10 },
-  { tagId: 9,  contentType: 'tool', contentId: 7, featured: false, weight: 9  },
-  { tagId: 5,  contentType: 'tool', contentId: 7, featured: false, weight: 7  },
+  // Ramp Calculator landing page (page 7) — tool is embedded in the page
+  { tagId: 13, contentType: 'page', contentId: 7, featured: true,  weight: 10 },
+  { tagId: 9,  contentType: 'page', contentId: 7, featured: false, weight: 9  },
 ]
 
 // ── Service functions ─────────────────────────────────────────────────────────

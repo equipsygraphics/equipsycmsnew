@@ -1,0 +1,110 @@
+// Contact Us enquiries — two-way communication.
+// status: 'open' | 'replied' | 'closed'
+// replies: array of admin notes / reply log entries
+
+export const mockEnquiries = [
+  {
+    id: 'enq-001',
+    subject: 'Question about grab rail installation',
+    name: 'Patricia Moore',
+    email: 'pat.moore@gmail.com',
+    phone: '0412 345 678',
+    message: `Hi there,\n\nI'm trying to decide between the 300mm and 450mm Stainless Grab Rail for my bathroom. The shower recess wall is tiled and about 600mm wide. My husband is 6\'1" and I'm 5\'4" — we need it to work for both of us.\n\nCould you advise which length would be better for general support near the shower entry?\n\nThanks,\nPatricia`,
+    submittedAt: '2026-07-05T10:24:00',
+    status: 'open',
+    replies: [],
+  },
+  {
+    id: 'enq-002',
+    subject: 'NDIS quote process query',
+    name: 'Thomas Herrera',
+    email: 'tom.herrera@ndiscoord.com.au',
+    phone: '',
+    message: `Hello,\n\nI'm an NDIS support coordinator. I've submitted a quote request through the website for a participant last week (ref QR-2026-0012 I think?) and haven't heard back. Our support plan meeting is tomorrow and the OT would like to confirm the product pricing before the meeting.\n\nCan you help escalate this?\n\nThanks,\nThomas`,
+    submittedAt: '2026-07-04T16:45:00',
+    status: 'replied',
+    replies: [
+      {
+        id: 'rep-001',
+        author: 'Admin',
+        body: `Hi Thomas,\n\nThank you for reaching out. I've located QR-2026-0012 in our system — it was submitted Friday afternoon which pushed it outside our same-day processing window. I've escalated it to our quoting team and you should receive the formal quote PDF via email within the next 2 hours.\n\nApologies for the delay ahead of your meeting. Let me know if there is anything else I can help with.\n\nKind regards,\nEquipsy Support`,
+        sentAt: '2026-07-04T17:30:00',
+      },
+    ],
+  },
+  {
+    id: 'enq-003',
+    subject: 'Return / exchange request',
+    name: 'Beverley Tan',
+    email: 'bev.tan@email.com',
+    phone: '0421 987 654',
+    message: `Hi,\n\nI ordered a shower chair in March (order #ECO-884) but the height adjustment mechanism has become stiff and is now very difficult to operate. I contacted your team in April and was told to wait and see if it loosened up, but it hasn't.\n\nI'd like to request an exchange or a replacement part if available.\n\nBeverley`,
+    submittedAt: '2026-07-03T09:12:00',
+    status: 'replied',
+    replies: [
+      {
+        id: 'rep-002',
+        author: 'Admin',
+        body: `Hi Beverley,\n\nThank you for following up. I'm sorry to hear the issue has persisted — that shouldn't be happening. I've pulled up order #ECO-884 and can see the previous contact in April.\n\nWe'll arrange a replacement height-adjustment pin assembly to be sent out at no charge. You should receive a dispatch confirmation within 1–2 business days. Please hold onto the existing chair until the part arrives.\n\nIf the replacement part doesn't resolve the issue please contact us again and we'll arrange a full exchange.\n\nBest,\nEquipsy Support`,
+        sentAt: '2026-07-03T11:00:00',
+      },
+      {
+        id: 'rep-003',
+        author: 'Admin',
+        body: `Hi Beverley,\n\nJust a follow-up to let you know the replacement part has been dispatched today via Australia Post (tracking: 1Z 999 AA1 01 2345 6784). Expected delivery is 2–3 business days.\n\nKind regards,\nEquipsy Support`,
+        sentAt: '2026-07-04T14:20:00',
+      },
+    ],
+  },
+  {
+    id: 'enq-004',
+    subject: 'Trade account pricing enquiry',
+    name: 'Daniel Rowan',
+    email: 'd.rowan@rowan-build.com.au',
+    phone: '0411 222 333',
+    message: `Hi Equipsy,\n\nWe're a licensed building company specialising in accessible housing modifications (DAs, livable housing, SDA). We have around 30–50 projects per year that would involve bathroom safety and accessibility products.\n\nI'd like to understand your trade pricing structure and whether a formal trade account agreement is available.\n\nDan`,
+    submittedAt: '2026-07-01T08:30:00',
+    status: 'closed',
+    replies: [
+      {
+        id: 'rep-004',
+        author: 'Admin',
+        body: `Hi Dan,\n\nThank you for reaching out — that sounds like a great fit for our trade program. For builders at your volume we can offer structured trade discounts and net-30 invoicing terms.\n\nI've forwarded your details to our trade account manager who will be in touch within 1 business day to discuss specifics and send through our trade account application.\n\nLooking forward to working with you.\n\nBest,\nEquipsy Sales Team`,
+        sentAt: '2026-07-01T10:15:00',
+      },
+    ],
+    closedAt: '2026-07-02T09:00:00',
+    closedNote: 'Passed to sales team. Trade account application sent by account manager.',
+  },
+  {
+    id: 'enq-005',
+    subject: 'Warranty claim — toilet safety frame',
+    name: 'Harold Simmons',
+    email: 'harolds@bigpond.com',
+    phone: '0400 111 222',
+    message: `Hello,\n\nI purchased a toilet safety frame from your website 8 months ago. One of the armrest tubes has developed a crack near the joint. I'm 87 years old and use this every day — it's quite important to me that it's safe to use.\n\nCould you please arrange a replacement under warranty? I have my original invoice.\n\nHarold Simmons`,
+    submittedAt: '2026-06-28T14:55:00',
+    status: 'closed',
+    replies: [
+      {
+        id: 'rep-005',
+        author: 'Admin',
+        body: `Dear Harold,\n\nThank you for getting in touch. Your safety is absolutely our first priority — please stop using the frame immediately until a replacement arrives.\n\nYour product is covered under our 12-month warranty. I've raised a priority warranty claim (ref: WC-2026-041) and a new toilet safety frame will be dispatched by end of business today via Express Post at no charge. You'll receive a tracking number via email.\n\nWarm regards,\nEquipsy Support`,
+        sentAt: '2026-06-28T16:10:00',
+      },
+    ],
+    closedAt: '2026-07-01T11:00:00',
+    closedNote: 'Warranty replacement dispatched. Customer confirmed receipt via phone.',
+  },
+  {
+    id: 'enq-006',
+    subject: 'Question about ramp for garage step',
+    name: 'Maria Kovacs',
+    email: 'maria.kovacs@email.com.au',
+    phone: '',
+    message: `Hi,\n\nI'm looking for a ramp for a single step at the entrance to my garage. The step is about 160mm high and the available floor space in front of it is around 1.2m. My husband uses a wheeled walker and manages the step himself at the moment but his GP has recommended he stops.\n\nWhat would you recommend and do you sell appropriate rubber matting to stop the ramp slipping?`,
+    submittedAt: '2026-07-05T16:02:00',
+    status: 'open',
+    replies: [],
+  },
+]

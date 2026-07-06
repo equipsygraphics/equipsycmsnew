@@ -5,7 +5,7 @@
 // paid               – payment received; converted to Order; removed from active list
 // closed             – archived (admin closed, or 30-day auto-close with no response)
 //
-// quoteType: 'standard' | 'shower_base' | 'freight'
+// quoteType: 'standard' | 'shower_base' | 'freight' | 'ramp_calculator'
 //
 // Editing rules:
 //   standard  – admin can edit items; saves generate a new quoteNumber revision
@@ -129,6 +129,44 @@ export const mockQuoteRequests = [
     items: [],
     shippingCost: 25.00,
     subtotal: 865.00, gst: 78.64, total: 865.00,
+  },
+
+  // ── Ramp Calculator (auto-generated, admin cannot edit) ─────────────────────
+  {
+    id: 'Q-2043', quoteNumber: 'Q-2043', revision: 1, previousQuoteNumber: null,
+    quoteType: 'ramp_calculator',
+    calculatorType: 'depth',
+    customer: 'Patricia Moore', email: 'pat.moore@gmail.com', phone: '0412 345 678',
+    account: 'Retail', billingAddress: '14 Hillcrest Ave, Cheltenham VIC 3192',
+    fulfillment: 'delivery', deliveryAddress: '14 Hillcrest Ave, Cheltenham VIC 3192',
+    dateReceived: daysAgo(1), sentAt: daysAgo(1),
+    status: 'quote_sent',
+    notes: 'Auto-generated via Ramp Depth Calculator.',
+    rampSpec: { rise: 160, width: 900, depth: 2240, gradient: '1:14' },
+    items: [
+      { id: 1, name: 'Aluminium Portable Ramp 2.4m × 900mm', sku: 'EQ-RP-A24-900', qty: 1, unitPrice: 490.00 },
+      { id: 2, name: 'Non-Slip Ramp Tape (per metre)',         sku: 'EQ-RP-NST',     qty: 3, unitPrice: 12.00  },
+    ],
+    shippingCost: 35.00,
+    subtotal: 526.00, gst: 47.82, total: 526.00,
+  },
+  {
+    id: 'Q-2042', quoteNumber: 'Q-2042', revision: 1, previousQuoteNumber: null,
+    quoteType: 'ramp_calculator',
+    calculatorType: 'gradient',
+    customer: 'Maria Kovacs', email: 'maria.kovacs@email.com.au', phone: '',
+    account: 'Retail', billingAddress: '27 Banksia St, Broadmeadows VIC 3047',
+    fulfillment: 'delivery', deliveryAddress: '27 Banksia St, Broadmeadows VIC 3047',
+    dateReceived: daysAgo(3), sentAt: daysAgo(3),
+    status: 'quote_sent',
+    notes: 'Auto-generated via Ramp Gradient Calculator. NCC 1:14 wheelchair requirement.',
+    rampSpec: { rise: 120, width: 1200, depth: 1680, gradient: '1:14' },
+    items: [
+      { id: 1, name: 'Aluminium Portable Ramp 1.8m × 1200mm', sku: 'EQ-RP-A18-1200', qty: 1, unitPrice: 580.00 },
+      { id: 2, name: 'Non-Slip Ramp Tape (per metre)',          sku: 'EQ-RP-NST',      qty: 2, unitPrice: 12.00  },
+    ],
+    shippingCost: 35.00,
+    subtotal: 604.00, gst: 54.91, total: 604.00,
   },
 
   // ── Freight ──────────────────────────────────────────────────────────────────

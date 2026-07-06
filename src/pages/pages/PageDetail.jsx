@@ -51,7 +51,7 @@ const DEFAULT_PAGE = {
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
-function BannerImagePicker({ value, onChange }) {
+function BannerImagePicker({ value, onChange, hint }) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -74,6 +74,7 @@ function BannerImagePicker({ value, onChange }) {
           </button>
         )}
       </div>
+      {hint && <p className="text-[10px] text-text-muted mt-1">{hint}</p>}
       <MediaLibraryModal open={open} onClose={() => setOpen(false)} onSelect={items => { onChange(items[0]?.url ?? null); setOpen(false) }} />
     </>
   )
@@ -282,7 +283,7 @@ function TabBanners({ page, onChange }) {
                 <Field label="Button Text"><Input value={b.buttonText} onChange={e => updateMain(idx, 'buttonText', e.target.value)} placeholder="e.g. Find out more" /></Field>
                 <Field label="Button URL"><Input value={b.buttonUrl} onChange={e => updateMain(idx, 'buttonUrl', e.target.value)} placeholder="/products" /></Field>
               </div>
-              <Field label="Banner Image"><BannerImagePicker value={b.image} onChange={v => updateMain(idx, 'image', v)} /></Field>
+              <Field label="Banner Image"><BannerImagePicker value={b.image} onChange={v => updateMain(idx, 'image', v)} hint={bannerStyle === 'one-banner' ? '800×400px recommended' : '1200×600px per banner recommended'} /></Field>
               <ColorPicker label="Background Colour" value={b.bgColor ?? (bannerStyle === 'one-banner' ? '#FAC515' : '#A15C07')} onChange={v => updateMain(idx, 'bgColor', v)} />
               {idx < bannerCount - 1 && <div className="border-t border-border" />}
             </div>
@@ -317,7 +318,7 @@ function TabBanners({ page, onChange }) {
                   <ColorPicker label="Background Colour" value={b.bgColor ?? '#CA8504'} onChange={v => updateCta(idx, 'bgColor', v)} />
                 </div>
               </div>
-              <Field label="Banner Image"><BannerImagePicker value={b.image} onChange={v => updateCta(idx, 'image', v)} /></Field>
+              <Field label="Banner Image"><BannerImagePicker value={b.image} onChange={v => updateCta(idx, 'image', v)} hint="600×750px recommended (portrait)" /></Field>
               {idx < ctaBanners.length - 1 && <div className="border-t border-border" />}
             </div>
           ))}

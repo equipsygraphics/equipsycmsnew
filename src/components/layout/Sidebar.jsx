@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShoppingBag, Tag, Navigation, ShoppingCart, Users,
   FileText, Hash, BookOpen, FolderOpen, MessageSquare, Briefcase, Package,
   Megaphone, Ticket, Mail, Rss, BarChart2, Globe, Search, Settings, UserCog, Sliders,
-  ChevronDown, ChevronRight, Star, ClipboardList,
+  ChevronDown, ChevronRight, ClipboardList,
 } from 'lucide-react'
 
 const NAV = [
@@ -26,25 +26,21 @@ const NAV = [
       { label: 'Media & Resources', icon: FolderOpen, to: '/media' },
     ],
   },
+  { label: 'Forms', icon: ClipboardList, to: '/forms' },
+  { label: 'Enquiries', icon: MessageSquare, to: '/enquiries' },
   {
-    label: 'Customer Feedback', icon: Star, children: [
-      { label: 'Checkout Feedback', icon: Star, to: '/feedback' },
-      { label: 'OT Feedback', icon: ClipboardList, to: '/ot-feedback' },
-    ],
-  },
-  {
-    label: 'Requests', icon: MessageSquare, children: [
+    label: 'Requests', icon: Briefcase, children: [
       { label: 'Quote Requests', icon: MessageSquare, to: '/quote-requests' },
       { label: 'Trade Account', icon: Briefcase, to: '/trade-account' },
       { label: 'Builder Pack', icon: Package, to: '/builder-pack' },
     ],
   },
+  { label: 'Subscribers', icon: Rss, to: '/subscribers' },
   {
     label: 'Marketing', icon: Megaphone, children: [
       { label: 'Campaigns', icon: Megaphone, to: '/campaigns' },
       { label: 'Coupons & Vouchers', icon: Ticket, to: '/coupons' },
       { label: 'Emails', icon: Mail, to: '/emails' },
-      { label: 'Newsletter Subscribers', icon: Rss, to: '/newsletter' },
     ],
   },
   {

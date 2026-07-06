@@ -21,8 +21,8 @@ const TABS = [
 
 const STATUS_LABEL   = { freight_requested: 'Freight Requested', quote_sent: 'Quote Sent', awaiting_payment: 'Awaiting Payment', paid: 'Paid', closed: 'Closed' }
 const STATUS_VARIANT = { freight_requested: 'warning', quote_sent: 'info', awaiting_payment: 'warning', paid: 'success', closed: 'grey' }
-const QUOTE_TYPE_LABEL   = { standard: 'Standard Items', freight: 'Freight', shower_base: 'Shower Base Insert' }
-const QUOTE_TYPE_VARIANT = { standard: 'info', freight: 'warning', shower_base: 'grey' }
+const QUOTE_TYPE_LABEL   = { standard: 'Standard Items', freight: 'Freight', shower_base: 'Shower Base Insert', ramp_calculator: 'Ramp Calculator' }
+const QUOTE_TYPE_VARIANT = { standard: 'info', freight: 'warning', shower_base: 'grey', ramp_calculator: 'info' }
 
 function daysRemainingForAutoClose(sentAt) {
   if (!sentAt) return null

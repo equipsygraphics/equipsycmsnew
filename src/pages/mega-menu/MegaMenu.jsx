@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import {
   Menu, X, ChevronRight, ChevronLeft, Eye, EyeOff, GripVertical,
   Plus, Trash2, Monitor, Settings2, Wrench, Search, BookOpen, Smartphone,
-  ShoppingCart, User, ClipboardList, Edit2, ArrowLeft,
+  ShoppingCart, User, ClipboardList, Edit2, ArrowLeft, Tag, FileText, Zap,
 } from 'lucide-react'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Button } from '../../components/ui/Button'
@@ -12,6 +12,12 @@ import { mockBlogPosts, mockPages } from '../../data/mockContent'
 import { mockCategories } from '../../data/mockCategories'
 import { mockProducts } from '../../data/mockProducts'
 import { MediaLibraryModal } from '../../components/ui/MediaLibraryModal'
+import {
+  mockTags,
+  mockCategoryTagLinks as INITIAL_CAT_LINKS,
+  mockContentTagLinks as INITIAL_CONTENT_LINKS,
+  getRelatedContent, getCategoryTagIds, computeTagUsage,
+} from '../../data/mockTagging'
 
 // ── Initial data ──────────────────────────────────────────────────────────────
 const INITIAL_NAV_LINKS = [
@@ -22,14 +28,11 @@ const INITIAL_NAV_LINKS = [
   { id: 5, pageId: 11, label: 'Clearance Sale',       color: 'red',     visible: true },
 ]
 
-// Full category data (all fields from mockCategories) + mega-menu-specific fields
 const INITIAL_CATEGORIES = mockCategories
   .filter(c => c.primary)
   .map(c => ({
     ...c,
     visible: true,
-    resources: [],
-    blog: [],
     subcategories: c.subcategories.map(s => ({
       ...s,
       desc: s.description || '',
@@ -52,7 +55,7 @@ const checkerStyle = {
 }
 
 // ── Reusable UI helpers ───────────────────────────────────────────────────────
-function BannerImagePicker({ value, onChange }) {
+function BannerImagePicker({ value, onChange, hint }) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -75,6 +78,7 @@ function BannerImagePicker({ value, onChange }) {
           </button>
         )}
       </div>
+      {hint && <p className="text-[10px] text-text-muted mt-1">{hint}</p>}
       <MediaLibraryModal open={open} onClose={() => setOpen(false)} onSelect={items => { onChange(items[0]?.url ?? null); setOpen(false) }} />
     </>
   )
@@ -273,7 +277,7 @@ function CatTabBanners({ item, onChange }) {
                 <Field label="Button Text"><Input value={b.buttonText} onChange={e => updateMain(idx, 'buttonText', e.target.value)} placeholder="e.g. Find out more" /></Field>
                 <Field label="Button URL"><Input value={b.buttonUrl} onChange={e => updateMain(idx, 'buttonUrl', e.target.value)} placeholder="/products?category=…" /></Field>
               </div>
-              <Field label="Banner Image"><BannerImagePicker value={b.image} onChange={v => updateMain(idx, 'image', v)} /></Field>
+              <Field label="Banner Image"><BannerImagePicker value={b.image} onChange={v => updateMain(idx, 'image', v)} hint={bannerStyle === 'one-banner' ? '800×400px recommended' : '1200×600px per banner recommended'} /></Field>
               <ColorPicker label="Background Colour" value={b.bgColor ?? (bannerStyle === 'one-banner' ? '#FAC515' : '#A15C07')} onChange={v => updateMain(idx, 'bgColor', v)} />
               {idx < bannerCount - 1 && <div className="border-t border-border" />}
             </div>
@@ -308,7 +312,7 @@ function CatTabBanners({ item, onChange }) {
                   <ColorPicker label="Background Colour" value={b.bgColor ?? '#CA8504'} onChange={v => updateCta(idx, 'bgColor', v)} />
                 </div>
               </div>
-              <Field label="Banner Image"><BannerImagePicker value={b.image} onChange={v => updateCta(idx, 'image', v)} /></Field>
+              <Field label="Banner Image"><BannerImagePicker value={b.image} onChange={v => updateCta(idx, 'image', v)} hint="600×750px recommended (portrait)" /></Field>
               {idx < ctaBanners.length - 1 && <div className="border-t border-border" />}
             </div>
           ))}
@@ -395,8 +399,290 @@ function CatTabFAQs({ item, onChange }) {
   )
 }
 
+// ── CatTabTags ────────────────────────────────────────────────────────────────
+function CatTabTags({ categoryId, categoryTagLinks, setCategoryTagLinks }) {
+  const [tagSearch, setTagSearch] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const linkedTagIds = categoryTagLinks.filter(l => l.categoryId === categoryId).map(l => l.tagId)
+  const linkedTags = mockTags.filter(t => linkedTagIds.includes(t.id))
+
+  const removeTag = (tagId) => {
+    setCategoryTagLinks(prev => prev.filter(l => !(l.categoryId === categoryId && l.tagId === tagId)))
+    toast('Tag unlinked from category', 'success')
+  }
+
+  const addTag = (tagId) => {
+    if (linkedTagIds.includes(tagId)) return
+    setCategoryTagLinks(prev => [...prev, { categoryId, tagId, weight: 5 }])
+    setTagSearch('')
+    toast('Tag linked to category', 'success')
+  }
+
+  const availableTags = mockTags.filter(t =>
+    !linkedTagIds.includes(t.id) &&
+    (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
+  )
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="rounded-xl border border-border p-4 flex flex-col gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-text-primary">Linked Tags</h3>
+          <p className="text-xs text-text-muted mt-0.5">
+            Content tagged with any of these will auto-populate the Related Content panel in the mega menu.
+          </p>
+        </div>
+
+        {linkedTags.length === 0 ? (
+          <p className="text-xs text-text-muted italic py-2">No tags linked yet. Add tags below to enable auto-populated related content.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {linkedTags.map(tag => {
+              const usage = computeTagUsage(tag.id)
+              return (
+                <div key={tag.id} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-brand-50 border border-brand-200 rounded-full group">
+                  <Tag className="w-3 h-3 text-brand-500 shrink-0" />
+                  <span className="text-xs font-medium text-brand-700">{tag.name}</span>
+                  <span className="text-[10px] text-brand-400">{usage.total}</span>
+                  <button onClick={() => removeTag(tag.id)} className="w-4 h-4 flex items-center justify-center rounded-full text-brand-400 hover:text-error-500 hover:bg-error-50 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <button
+          onClick={() => setPickerOpen(v => !v)}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 px-2.5 py-1.5 rounded-lg border border-brand-200 hover:bg-brand-50 transition-colors w-fit"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Tag
+        </button>
+
+        {pickerOpen && (
+          <div className="rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-grey-50">
+              <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
+              <input
+                autoFocus
+                value={tagSearch}
+                onChange={e => setTagSearch(e.target.value)}
+                placeholder="Search tags…"
+                className="flex-1 bg-transparent text-sm outline-none text-text-primary placeholder:text-text-muted"
+              />
+              {tagSearch && <button onClick={() => setTagSearch('')} className="text-text-muted hover:text-text-primary"><X className="w-3.5 h-3.5" /></button>}
+            </div>
+            <div className="max-h-44 overflow-y-auto">
+              {availableTags.length === 0
+                ? <p className="text-xs text-text-muted text-center py-5">{tagSearch ? 'No matching tags' : 'All tags already linked'}</p>
+                : availableTags.map(tag => {
+                    const usage = computeTagUsage(tag.id)
+                    return (
+                      <button key={tag.id} onClick={() => addTag(tag.id)} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-grey-50 transition-colors text-left border-b border-border last:border-0">
+                        <Tag className="w-3.5 h-3.5 text-brand-300 shrink-0" />
+                        <span className="flex-1 text-sm text-text-primary">{tag.name}</span>
+                        {usage.total > 0 && <span className="text-xs text-text-muted">{usage.total} items</span>}
+                      </button>
+                    )
+                  })
+              }
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 flex gap-3">
+        <Zap className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-xs font-semibold text-brand-700">How auto-population works</p>
+          <p className="text-xs text-brand-600 mt-0.5 leading-relaxed">
+            Articles and pages tagged with any of the above will automatically appear in the mega menu's Related Content column when a customer browses this category. Featured items surface first. Manage tags globally under <strong>Content › Tags</strong>.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── CatTabRelatedContent ──────────────────────────────────────────────────────
+const CONTENT_TYPE_META = {
+  article: { label: 'Articles', Icon: BookOpen, color: 'text-[#04619A]', bg: 'bg-[#EFF8FF]' },
+  page:    { label: 'Pages',    Icon: FileText,  color: 'text-warning-600', bg: 'bg-warning-50' },
+}
+
+function resolveContent(contentType, contentId) {
+  if (contentType === 'article') return mockBlogPosts.find(p => p.id === contentId)
+  return mockPages.find(p => p.id === contentId)
+}
+
+const MAX_RELATED = 3
+
+function CatTabRelatedContent({ categoryId, categoryTagLinks, contentTagLinks, items, setItems }) {
+  const [dropOpen, setDropOpen] = useState(false)
+  const [dropSearch, setDropSearch] = useState('')
+  const dragIdx = useRef(null)
+  const dragOverIdx = useRef(null)
+
+  const related = getRelatedContent(categoryId, { categoryTagLinks, contentTagLinks })
+  const autoSeed = [...related.articles, ...related.pages]
+    .slice(0, MAX_RELATED)
+    .map(({ contentType, contentId }) => ({ contentType, contentId }))
+
+  const isAuto = items === undefined
+  const displayItems = isAuto ? autoSeed : items
+
+  const displayKeys = new Set(displayItems.map(r => `${r.contentType}:${r.contentId}`))
+  const allOptions = [
+    ...mockBlogPosts.map(p => ({ contentType: 'article', contentId: p.id })),
+    ...mockPages.map(p => ({ contentType: 'page', contentId: p.id })),
+  ]
+  const dropOptions = allOptions.filter(item => !displayKeys.has(`${item.contentType}:${item.contentId}`))
+  const filteredOptions = dropSearch
+    ? dropOptions.filter(item => {
+        const content = resolveContent(item.contentType, item.contentId)
+        return content?.title.toLowerCase().includes(dropSearch.toLowerCase())
+      })
+    : dropOptions
+
+  const removeItem = idx => setItems(displayItems.filter((_, i) => i !== idx))
+
+  const addItem = (contentType, contentId) => {
+    if (displayItems.length >= MAX_RELATED) return
+    setItems([...displayItems, { contentType, contentId }])
+    setDropSearch('')
+    setDropOpen(false)
+  }
+
+  const onDragStart = idx => { dragIdx.current = idx }
+  const onDragOver = (e, idx) => { e.preventDefault(); dragOverIdx.current = idx }
+  const onDrop = () => {
+    const from = dragIdx.current, to = dragOverIdx.current
+    if (from !== null && to !== null && from !== to) {
+      const arr = [...displayItems]; const [it] = arr.splice(from, 1); arr.splice(to, 0, it)
+      setItems(arr)
+    }
+    dragIdx.current = null; dragOverIdx.current = null
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isAuto
+            ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-600 bg-brand-50 border border-brand-100 px-1.5 py-0.5 rounded"><Zap className="w-2.5 h-2.5" />Auto</span>
+            : <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-warning-600 bg-warning-50 border border-warning-200 px-1.5 py-0.5 rounded"><Edit2 className="w-2.5 h-2.5" />Custom</span>
+          }
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${displayItems.length >= MAX_RELATED ? 'text-error-500 bg-error-50' : 'text-text-muted bg-grey-100'}`}>
+            {displayItems.length}/{MAX_RELATED}
+          </span>
+        </div>
+        {!isAuto && (
+          <button onClick={() => { setItems(undefined); setDropOpen(false) }}
+            className="text-[10px] text-brand-500 hover:text-brand-600 font-medium">
+            Reset to auto
+          </button>
+        )}
+      </div>
+
+      {displayItems.length === 0 && (
+        <div className="rounded-xl border border-border p-5 flex flex-col items-center gap-2 text-center">
+          <Tag className="w-5 h-5 text-text-muted" />
+          <p className="text-xs text-text-muted">No related content. Link tags in the Tags tab or add items below.</p>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {displayItems.map((item, idx) => {
+          const content = resolveContent(item.contentType, item.contentId)
+          if (!content) return null
+          const meta = CONTENT_TYPE_META[item.contentType]
+          const Icon = meta.Icon
+          return (
+            <div key={`${item.contentType}-${item.contentId}`}
+              draggable
+              onDragStart={() => onDragStart(idx)}
+              onDragOver={e => onDragOver(e, idx)}
+              onDrop={onDrop}
+              className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg border border-border bg-surface cursor-grab active:cursor-grabbing group hover:bg-grey-50 transition-colors">
+              <GripVertical className="w-3.5 h-3.5 text-text-muted shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${meta.bg}`}>
+                <Icon className={`w-3.5 h-3.5 ${meta.color}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text-primary leading-snug line-clamp-2">{content.title}</p>
+                {'slug' in content && <p className="text-[10px] text-text-muted font-mono mt-0.5">{content.slug}</p>}
+                {'category' in content && <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded mt-0.5 ${meta.bg} ${meta.color}`}>{content.category}</span>}
+              </div>
+              <button onClick={() => removeItem(idx)} title="Remove"
+                className="p-1 rounded text-text-muted hover:text-error-500 hover:bg-error-50 transition-colors shrink-0 mt-0.5 opacity-0 group-hover:opacity-100">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="relative">
+          <button
+            disabled={displayItems.length >= MAX_RELATED}
+            onClick={() => { setDropOpen(v => !v); setDropSearch('') }}
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors w-full justify-center ${
+              displayItems.length >= MAX_RELATED
+                ? 'text-text-muted border-border bg-grey-50 cursor-not-allowed opacity-60'
+                : 'text-brand-600 hover:text-brand-700 border-brand-200 hover:bg-brand-50'
+            }`}>
+            <Plus className="w-3.5 h-3.5" /> Add Content Manually
+          </button>
+
+          {dropOpen && displayItems.length < MAX_RELATED && (
+            <div className="absolute z-20 top-full mt-1 left-0 right-0 rounded-xl border border-border shadow-lg bg-surface overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-grey-50">
+                <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                <input autoFocus value={dropSearch} onChange={e => setDropSearch(e.target.value)}
+                  placeholder="Search articles and pages…"
+                  className="flex-1 bg-transparent text-sm outline-none text-text-primary placeholder:text-text-muted" />
+                {dropSearch && <button onClick={() => setDropSearch('')}><X className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" /></button>}
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {filteredOptions.length === 0
+                  ? <p className="text-xs text-text-muted text-center py-5">{dropSearch ? 'No matching content' : 'All content already added'}</p>
+                  : filteredOptions.map(item => {
+                      const content = resolveContent(item.contentType, item.contentId)
+                      if (!content) return null
+                      const meta = CONTENT_TYPE_META[item.contentType]
+                      const Icon = meta.Icon
+                      return (
+                        <button key={`opt-${item.contentType}-${item.contentId}`}
+                          onClick={() => addItem(item.contentType, item.contentId)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-grey-50 transition-colors text-left border-b border-border last:border-0">
+                          <Icon className={`w-3.5 h-3.5 shrink-0 ${meta.color}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-text-primary truncate">{content.title}</p>
+                            {'slug' in content && <p className="text-[10px] text-text-muted font-mono">{content.slug}</p>}
+                          </div>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${meta.bg} ${meta.color}`}>{meta.label.replace(/s$/, '')}</span>
+                        </button>
+                      )
+                    })
+                }
+              </div>
+            </div>
+          )}
+        </div>
+        {displayItems.length >= MAX_RELATED
+          ? <p className="text-[10px] text-text-muted text-center">Maximum of {MAX_RELATED} items reached — remove one to add another.</p>
+          : <p className="text-[10px] text-text-muted text-center">{MAX_RELATED - displayItems.length} slot{MAX_RELATED - displayItems.length !== 1 ? 's' : ''} remaining</p>
+        }
+      </div>
+    </div>
+  )
+}
+
 // ── Live Menu tab ─────────────────────────────────────────────────────────────
-function LiveMenuTab({ navLinks, categories }) {
+function LiveMenuTab({ navLinks, categories, categoryTagLinks, contentTagLinks, categoryManualContent }) {
   const [viewMode, setViewMode] = useState('desktop')
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeCatId, setActiveCatId] = useState(null)
@@ -409,11 +695,27 @@ function LiveMenuTab({ navLinks, categories }) {
   const switchView = (mode) => { setViewMode(mode); setMenuOpen(false); setMobileView('closed'); setMobileCatId(null) }
   const activeCat = categories.find(c => c.id === activeCatId) ?? visibleCats[0]
 
+  const getAutoContent = (catId) => {
+    if (!catId) return { articles: [], pages: [] }
+    return getRelatedContent(catId, { categoryTagLinks, contentTagLinks })
+  }
+
+  const autoContent = getAutoContent(activeCat?.id)
+  const overrideItems = (categoryManualContent ?? {})[activeCat?.id]
+  const allDisplayItems = overrideItems !== undefined
+    ? overrideItems
+    : [...autoContent.articles, ...autoContent.pages]
+        .slice(0, MAX_RELATED)
+        .map(r => ({ contentType: r.contentType, contentId: r.contentId }))
+
+  const displayResources = allDisplayItems.filter(r => r.contentType === 'page').slice(0, 2)
+  const displayArticles = allDisplayItems.filter(r => r.contentType === 'article').slice(0, 3)
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-text-muted">
-          Click <strong>{viewMode === 'desktop' ? 'Our Products' : 'the hamburger'}</strong> to expand. Changes in the Structure tab update instantly.
+          Click <strong>{viewMode === 'desktop' ? 'Our Products' : 'the hamburger'}</strong> to expand. Related content is auto-populated via tags.
         </p>
         <div className="flex items-center gap-1 bg-grey-100 p-1 rounded-lg">
           <button onClick={() => switchView('desktop')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${viewMode === 'desktop' ? 'bg-white text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}>
@@ -479,19 +781,22 @@ function LiveMenuTab({ navLinks, categories }) {
               </div>
               <div className="w-72 p-6 shrink-0">
                 <h3 className="font-bold text-[15px] text-[#1F2A37] mb-4">Related Content</h3>
-                {activeCat?.resources?.filter(r => r.visible).length > 0 && (
+                {displayResources.length > 0 && (
                   <div className="mb-5">
                     <p className="text-xs font-semibold text-[#1F2A37] mb-2">Tools &amp; Resources</p>
                     <div className="flex flex-col gap-2">
-                      {activeCat.resources.filter(r => r.visible).map(item => {
-                        const page = mockPages.find(p => p.id === item.pageId); if (!page) return null
+                      {displayResources.map(item => {
+                        const content = resolveContent(item.contentType, item.contentId)
+                        if (!content) return null
                         return (
-                          <div key={item.pageId} className="border-2 border-[#F5C200] rounded-xl p-3 cursor-pointer hover:bg-yellow-50 transition-colors">
+                          <div key={`${item.contentType}-${item.contentId}`} className="border-2 border-[#F5C200] rounded-xl p-3 cursor-pointer hover:bg-yellow-50 transition-colors">
                             <div className="flex gap-3">
-                              <div className="w-14 h-10 bg-[#FEF9C3] rounded-lg shrink-0 flex items-center justify-center"><Wrench className="w-4 h-4 text-[#CA8504]" /></div>
+                              <div className="w-14 h-10 bg-[#FEF9C3] rounded-lg shrink-0 flex items-center justify-center">
+                                <FileText className="w-4 h-4 text-[#CA8504]" />
+                              </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-semibold text-[#1F2A37] leading-snug">{page.title}</p>
-                                <p className="text-[11px] text-[#6B7280] mt-0.5 font-mono">{page.slug}</p>
+                                <p className="text-xs font-semibold text-[#1F2A37] leading-snug">{content.title}</p>
+                                <p className="text-[11px] text-[#6B7280] mt-0.5 font-mono">{content.slug}</p>
                                 <span className="text-[11px] text-[#04619A] font-semibold mt-1 inline-flex items-center gap-0.5">Visit page <ChevronRight className="w-3 h-3" /></span>
                               </div>
                             </div>
@@ -501,17 +806,18 @@ function LiveMenuTab({ navLinks, categories }) {
                     </div>
                   </div>
                 )}
-                {activeCat?.blog?.filter(b => b.visible).length > 0 && (
+                {displayArticles.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-[#1F2A37]">Blog</p>
                       <span className="text-[11px] text-[#04619A] font-semibold cursor-pointer hover:underline">View all</span>
                     </div>
                     <div className="flex flex-col gap-4">
-                      {activeCat.blog.filter(b => b.visible).map(item => {
-                        const post = mockBlogPosts.find(p => p.id === item.postId); if (!post) return null
+                      {displayArticles.map(item => {
+                        const post = resolveContent('article', item.contentId)
+                        if (!post) return null
                         return (
-                          <div key={item.postId} className="flex gap-3 cursor-pointer group">
+                          <div key={item.contentId} className="flex gap-3 cursor-pointer group">
                             <div className="w-16 h-11 bg-grey-100 rounded-lg shrink-0" />
                             <div className="min-w-0">
                               <span className="inline-block text-[10px] font-semibold text-[#04619A] bg-[#EFF8FF] px-1.5 py-0.5 rounded mb-1">{post.category}</span>
@@ -524,8 +830,11 @@ function LiveMenuTab({ navLinks, categories }) {
                     </div>
                   </div>
                 )}
-                {!activeCat?.resources?.filter(r => r.visible).length && !activeCat?.blog?.filter(b => b.visible).length && (
-                  <p className="text-xs text-text-muted italic">No related content for this category.</p>
+                {displayResources.length === 0 && displayArticles.length === 0 && (
+                  <div className="flex flex-col items-center gap-2 py-4 text-center">
+                    <Tag className="w-5 h-5 text-text-muted" />
+                    <p className="text-xs text-text-muted italic">No related content. Link tags to this category to auto-populate this panel.</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -536,6 +845,15 @@ function LiveMenuTab({ navLinks, categories }) {
 
       {viewMode === 'mobile' && (() => {
         const mobileCat = categories.find(c => c.id === mobileCatId)
+        const mobileAutoContent = getAutoContent(mobileCat?.id)
+        const mobileOverride = (categoryManualContent ?? {})[mobileCat?.id]
+        const mobileAllItems = mobileOverride !== undefined
+          ? mobileOverride
+          : [...mobileAutoContent.articles, ...mobileAutoContent.pages]
+              .slice(0, MAX_RELATED)
+              .map(r => ({ contentType: r.contentType, contentId: r.contentId }))
+        const mobileResources = mobileAllItems.filter(r => r.contentType === 'page').slice(0, 3)
+        const mobileArticles = mobileAllItems.filter(r => r.contentType === 'article').slice(0, 3)
         return (
           <div className="flex justify-center">
             <div className="w-[390px] rounded-[2.5rem] border-[6px] border-[#1F2A37] overflow-hidden shadow-2xl bg-white" style={{ minHeight: 700 }}>
@@ -627,29 +945,36 @@ function LiveMenuTab({ navLinks, categories }) {
                       ))}
                       {mobileCat.subcategories.filter(s => s.visible).length === 0 && <div className="px-5 py-6"><p className="text-sm text-text-muted italic">No subcategories configured.</p></div>}
                     </div>
-                    {(mobileCat.resources?.filter(r => r.visible).length > 0 || mobileCat.blog?.filter(b => b.visible).length > 0) && (
+                    {(mobileResources.length > 0 || mobileArticles.length > 0) && (
                       <div className="mt-2 border-t border-[#E5E7EB] px-5 pt-5 pb-4">
                         <p className="font-bold text-[#1F2A37] text-base mb-4">Related Content</p>
-                        {mobileCat.resources?.filter(r => r.visible).map(item => {
-                          const page = mockPages.find(p => p.id === item.pageId); if (!page) return null
+                        {mobileResources.map(item => {
+                          const content = resolveContent(item.contentType, item.contentId)
+                          if (!content) return null
                           return (
-                            <div key={item.pageId} className="flex items-center gap-3 py-3 border-b border-[#E5E7EB]">
+                            <div key={`${item.contentType}-${item.contentId}`} className="flex items-center gap-3 py-3 border-b border-[#E5E7EB]">
                               <div className="w-8 h-8 bg-[#FEF9C3] rounded-lg flex items-center justify-center shrink-0"><Wrench className="w-4 h-4 text-[#CA8504]" /></div>
-                              <span className="text-sm font-semibold text-[#1F2A37]">{page.title}</span>
+                              <span className="text-sm font-semibold text-[#1F2A37]">{content.title}</span>
                               <ChevronRight className="w-4 h-4 text-[#6B7280] ml-auto shrink-0" />
                             </div>
                           )
                         })}
-                        {mobileCat.blog?.filter(b => b.visible).map(item => {
-                          const post = mockBlogPosts.find(p => p.id === item.postId); if (!post) return null
+                        {mobileArticles.map(item => {
+                          const post = resolveContent('article', item.contentId)
+                          if (!post) return null
                           return (
-                            <div key={item.postId} className="flex items-center gap-3 py-3 border-b border-[#E5E7EB]">
+                            <div key={item.contentId} className="flex items-center gap-3 py-3 border-b border-[#E5E7EB]">
                               <div className="w-8 h-8 bg-grey-100 rounded-lg shrink-0" />
                               <span className="text-sm font-semibold text-[#1F2A37] flex-1 line-clamp-1">{post.title}</span>
                               <ChevronRight className="w-4 h-4 text-[#6B7280] shrink-0" />
                             </div>
                           )
                         })}
+                      </div>
+                    )}
+                    {mobileResources.length === 0 && mobileArticles.length === 0 && (
+                      <div className="px-5 py-5 border-t border-[#E5E7EB] text-center">
+                        <p className="text-xs text-text-muted italic">No related content for this category.</p>
                       </div>
                     )}
                   </>
@@ -665,7 +990,8 @@ function LiveMenuTab({ navLinks, categories }) {
 
 // ── Structure tab ─────────────────────────────────────────────────────────────
 const CAT_TABS = [
-  { id: 'megamenu', label: 'Mega Menu' },
+  { id: 'related',  label: 'Related Content' },
+  { id: 'tags',     label: 'Tags' },
   { id: 'general',  label: 'General' },
   { id: 'banners',  label: 'Banners' },
   { id: 'seo',      label: 'SEO' },
@@ -680,10 +1006,10 @@ const SUB_TABS = [
   { id: 'products', label: 'Products' },
 ]
 
-function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
+function StructureTab({ navLinks, setNavLinks, categories, setCategories, categoryTagLinks, setCategoryTagLinks, contentTagLinks, categoryManualContent, setCategoryManualContent }) {
   const [selectedCatId, setSelectedCatId] = useState(categories[0]?.id ?? null)
   const [editingSubId, setEditingSubId] = useState(null)
-  const [catPanelTab, setCatPanelTab] = useState('megamenu')
+  const [catPanelTab, setCatPanelTab] = useState('related')
   const [subPanelTab, setSubPanelTab] = useState('general')
 
   const dragNav = useRef(null); const dragOverNav = useRef(null)
@@ -692,15 +1018,10 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
 
   const [navPickerOpen, setNavPickerOpen] = useState(false)
   const [navSearch, setNavSearch] = useState('')
-  const [blogPickerOpen, setBlogPickerOpen] = useState(false)
-  const [blogSearch, setBlogSearch] = useState('')
-  const [resourcePickerOpen, setResourcePickerOpen] = useState(false)
-  const [resourceSearch, setResourceSearch] = useState('')
 
   const selectedCat = categories.find(c => c.id === selectedCatId) ?? null
   const editingSub = editingSubId ? selectedCat?.subcategories.find(s => s.id === editingSubId) ?? null : null
 
-  // ── Update helpers ──────────────────────────────────────────────────────────
   const updateCat = (field, value) => {
     setCategories(prev => prev.map(c => c.id === selectedCatId ? { ...c, [field]: value } : c))
   }
@@ -716,7 +1037,6 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
   const selectCategory = (catId) => { setSelectedCatId(catId); setEditingSubId(null) }
   const openSubEditor = (subId) => { setEditingSubId(subId); setSubPanelTab('general') }
 
-  // ── Nav link helpers ────────────────────────────────────────────────────────
   const addNavLinkFromPage = (pageId) => {
     const page = mockPages.find(p => p.id === pageId); if (!page) return
     setNavLinks(prev => [...prev, { id: Date.now(), pageId, label: page.title, color: 'default', visible: true }])
@@ -733,7 +1053,6 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
     dragNav.current = null; dragOverNav.current = null
   }
 
-  // ── Category drag ────────────────────────────────────────────────────────────
   const onCatDragStart = idx => { dragCat.current = idx }
   const onCatDragOver = (e, idx) => { e.preventDefault(); dragOverCat.current = idx }
   const onCatDrop = () => {
@@ -742,7 +1061,6 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
     dragCat.current = null; dragOverCat.current = null
   }
 
-  // ── Subcategory drag ─────────────────────────────────────────────────────────
   const onSubDragStart = idx => { dragSub.current = idx }
   const onSubDragOver = (e, idx) => { e.preventDefault(); dragOverSub.current = idx }
   const onSubDrop = () => {
@@ -757,29 +1075,12 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
     dragSub.current = null; dragOverSub.current = null
   }
 
-  // ── Resource helpers ─────────────────────────────────────────────────────────
-  const addResource = (pageId) => {
-    setCategories(prev => prev.map(c => c.id === selectedCatId ? { ...c, resources: [...c.resources, { pageId, visible: true }] } : c))
-    setResourcePickerOpen(false); setResourceSearch('')
-  }
-  const removeResource = (pageId) => setCategories(prev => prev.map(c => c.id === selectedCatId ? { ...c, resources: c.resources.filter(r => r.pageId !== pageId) } : c))
-  const toggleResourceVisible = (pageId) => setCategories(prev => prev.map(c => c.id === selectedCatId ? { ...c, resources: c.resources.map(r => r.pageId === pageId ? { ...r, visible: !r.visible } : r) } : c))
-
-  // ── Blog helpers ─────────────────────────────────────────────────────────────
-  const addBlogPost = (postId) => {
-    setCategories(prev => prev.map(c => c.id === selectedCatId ? { ...c, blog: [...c.blog, { postId, visible: true }] } : c))
-    setBlogPickerOpen(false); setBlogSearch('')
-  }
-  const removeBlogPost = (postId) => setCategories(prev => prev.map(c => c.id === selectedCatId ? { ...c, blog: c.blog.filter(b => b.postId !== postId) } : c))
-  const toggleBlogPostVisible = (postId) => setCategories(prev => prev.map(c => c.id === selectedCatId ? { ...c, blog: c.blog.map(b => b.postId === postId ? { ...b, visible: !b.visible } : b) } : c))
-
-  // ── Visibility toggles ───────────────────────────────────────────────────────
   const toggleCatVisible = catId => setCategories(prev => prev.map(c => c.id === catId ? { ...c, visible: !c.visible } : c))
   const toggleSubVisible = (catId, subId) => setCategories(prev => prev.map(c => c.id === catId ? { ...c, subcategories: c.subcategories.map(s => s.id === subId ? { ...s, visible: !s.visible } : s) } : c))
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ── Top nav links ─────────────────────────────────────────────────────── */}
+      {/* Top nav links */}
       <div className="bg-surface rounded-xl border border-border shadow-card p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -854,7 +1155,7 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
         </div>
       </div>
 
-      {/* ── Our Products section ──────────────────────────────────────────────── */}
+      {/* Our Products section */}
       <div className="flex gap-4 items-start">
         {/* Category list */}
         <div className="w-64 bg-surface rounded-xl border border-border shadow-card shrink-0 overflow-hidden">
@@ -875,7 +1176,7 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
         {selectedCat && (
           <div className="flex-1 min-w-0 bg-surface rounded-xl border border-border shadow-card overflow-hidden">
 
-            {/* ── Subcategory editor ───────────────────────────────────────────── */}
+            {/* Subcategory editor */}
             {editingSub ? (
               <div className="p-5 flex flex-col gap-4">
                 <button onClick={() => setEditingSubId(null)} className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary w-fit">
@@ -885,8 +1186,6 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
                   <h3 className="text-base font-semibold text-text-primary">{editingSub.name}</h3>
                   <p className="text-xs text-text-muted mt-0.5">Subcategory of {selectedCat.name}</p>
                 </div>
-
-                {/* Sub tabs */}
                 <div className="flex gap-0 border-b border-border -mx-5 px-5">
                   {SUB_TABS.map(t => (
                     <button key={t.id} onClick={() => setSubPanelTab(t.id)}
@@ -895,7 +1194,6 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
                     </button>
                   ))}
                 </div>
-
                 {subPanelTab === 'general'  && <CatTabGeneral  item={editingSub} onChange={updateSub} isSubcategory />}
                 {subPanelTab === 'banners'  && <CatTabBanners  item={editingSub} onChange={updateSub} />}
                 {subPanelTab === 'seo'      && <CatTabSEO      item={editingSub} onChange={updateSub} />}
@@ -904,9 +1202,8 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
               </div>
 
             ) : (
-              /* ── Category editor ──────────────────────────────────────────── */
+              /* Category editor */
               <div className="flex flex-col">
-                {/* Header */}
                 <div className="px-5 pt-4 pb-3 border-b border-border flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-semibold text-text-primary">{selectedCat.name}</h3>
@@ -915,21 +1212,19 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
                   <Toggle checked={selectedCat.visible} onChange={() => toggleCatVisible(selectedCat.id)} label="Show in menu" />
                 </div>
 
-                {/* Category tabs */}
                 <div className="flex gap-0 border-b border-border px-5">
                   {CAT_TABS.map(t => (
                     <button key={t.id} onClick={() => setCatPanelTab(t.id)}
-                      className={`px-3 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors ${catPanelTab === t.id ? 'border-brand-500 text-brand-600' : 'border-transparent text-text-muted hover:text-text-primary'}`}>
+                      className={`px-3 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${catPanelTab === t.id ? 'border-brand-500 text-brand-600' : 'border-transparent text-text-muted hover:text-text-primary'}`}>
                       {t.label}
                     </button>
                   ))}
                 </div>
 
                 <div className="p-5 flex flex-col gap-4">
-                  {/* ── Mega Menu tab ───────────────────────────────────────── */}
-                  {catPanelTab === 'megamenu' && (
+                  {catPanelTab === 'related' && (
                     <>
-                      {/* Subcategories */}
+                      {/* Subcategories section stays in Related Content tab */}
                       <div>
                         <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Subcategories</p>
                         {selectedCat.subcategories.length === 0
@@ -959,127 +1254,33 @@ function StructureTab({ navLinks, setNavLinks, categories, setCategories }) {
                         }
                       </div>
 
-                      {/* Tools & Resources */}
+                      <div className="border-t border-border" />
+
                       <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Tools &amp; Resources</p>
-                          <button onClick={() => { setResourcePickerOpen(v => !v); setResourceSearch('') }}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 px-2 py-1 rounded-md hover:bg-brand-50 transition-colors">
-                            <Plus className="w-3.5 h-3.5" /> Add Page
-                          </button>
-                        </div>
-
-                        {resourcePickerOpen && (() => {
-                          const addedIds = new Set(selectedCat.resources.map(r => r.pageId))
-                          const publishedPages = mockPages.filter(p => p.status === 'published' && !addedIds.has(p.id) && (!resourceSearch || p.title.toLowerCase().includes(resourceSearch.toLowerCase()) || p.slug.toLowerCase().includes(resourceSearch.toLowerCase())))
-                          return (
-                            <div className="rounded-xl border border-border shadow-sm mb-3 overflow-hidden">
-                              <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-grey-50">
-                                <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                                <input autoFocus value={resourceSearch} onChange={e => setResourceSearch(e.target.value)} placeholder="Search pages…" className="flex-1 bg-transparent text-sm outline-none text-text-primary placeholder:text-text-muted" />
-                                {resourceSearch && <button onClick={() => setResourceSearch('')} className="text-text-muted hover:text-text-primary"><X className="w-3.5 h-3.5" /></button>}
-                              </div>
-                              <div className="max-h-52 overflow-y-auto">
-                                {publishedPages.length === 0
-                                  ? <div className="flex flex-col items-center gap-1.5 py-6 text-text-muted"><Wrench className="w-5 h-5" /><p className="text-xs">{resourceSearch ? 'No matching pages' : 'All published pages already added'}</p></div>
-                                  : publishedPages.map(page => (
-                                    <button key={page.id} onClick={() => addResource(page.id)} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-grey-50 transition-colors text-left border-b border-border last:border-0">
-                                      <div className="flex-1 min-w-0"><p className="text-sm text-text-primary">{page.title}</p><p className="text-xs text-text-muted font-mono">{page.slug}</p></div>
-                                      <span className="text-[10px] font-semibold text-success-600 bg-success-50 px-1.5 py-0.5 rounded shrink-0 capitalize">{page.template}</span>
-                                    </button>
-                                  ))
-                                }
-                              </div>
-                            </div>
-                          )
-                        })()}
-
-                        {selectedCat.resources.length === 0
-                          ? <p className="text-xs text-text-muted italic">No pages linked. Click "Add Page" to add one.</p>
-                          : (
-                            <div className="flex flex-col gap-2">
-                              {selectedCat.resources.map(item => {
-                                const page = mockPages.find(p => p.id === item.pageId); if (!page) return null
-                                return (
-                                  <div key={item.pageId} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border hover:bg-grey-50 transition-colors">
-                                    <Wrench className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                                    <div className="flex-1 min-w-0"><p className="text-sm text-text-primary font-medium">{page.title}</p><p className="text-xs text-text-muted font-mono">{page.slug}</p></div>
-                                    <button onClick={() => toggleResourceVisible(item.pageId)} className={`p-1.5 rounded-md shrink-0 transition-colors ${item.visible ? 'text-brand-500 hover:bg-brand-50' : 'text-text-muted hover:bg-grey-100'}`}>
-                                      {item.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                    </button>
-                                    <button onClick={() => removeResource(item.pageId)} className="p-1.5 rounded-md shrink-0 text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )
-                        }
-                      </div>
-
-                      {/* Blog Articles */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Blog Articles</p>
-                          <button onClick={() => { setBlogPickerOpen(v => !v); setBlogSearch('') }}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 px-2 py-1 rounded-md hover:bg-brand-50 transition-colors">
-                            <Plus className="w-3.5 h-3.5" /> Add Article
-                          </button>
-                        </div>
-
-                        {blogPickerOpen && (() => {
-                          const addedIds = new Set(selectedCat.blog.map(b => b.postId))
-                          const available = mockBlogPosts.filter(p => !addedIds.has(p.id) && (!blogSearch || p.title.toLowerCase().includes(blogSearch.toLowerCase()) || p.category.toLowerCase().includes(blogSearch.toLowerCase())))
-                          return (
-                            <div className="rounded-xl border border-border shadow-sm mb-3 overflow-hidden">
-                              <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-grey-50">
-                                <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                                <input autoFocus value={blogSearch} onChange={e => setBlogSearch(e.target.value)} placeholder="Search blog posts…" className="flex-1 bg-transparent text-sm outline-none text-text-primary placeholder:text-text-muted" />
-                                {blogSearch && <button onClick={() => setBlogSearch('')} className="text-text-muted hover:text-text-primary"><X className="w-3.5 h-3.5" /></button>}
-                              </div>
-                              <div className="max-h-52 overflow-y-auto">
-                                {available.length === 0
-                                  ? <div className="flex flex-col items-center gap-1.5 py-6 text-text-muted"><BookOpen className="w-5 h-5" /><p className="text-xs">{blogSearch ? 'No matching posts' : 'All posts already added'}</p></div>
-                                  : available.map(post => (
-                                    <button key={post.id} onClick={() => addBlogPost(post.id)} className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-grey-50 transition-colors text-left border-b border-border last:border-0">
-                                      <span className="inline-block text-[10px] font-semibold text-[#04619A] bg-[#EFF8FF] px-1.5 py-0.5 rounded shrink-0 mt-0.5">{post.category}</span>
-                                      <span className="text-sm text-text-primary leading-snug">{post.title}</span>
-                                      {post.status === 'draft' && <span className="text-[10px] font-semibold text-text-muted bg-grey-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">Draft</span>}
-                                    </button>
-                                  ))
-                                }
-                              </div>
-                            </div>
-                          )
-                        })()}
-
-                        {selectedCat.blog.length === 0
-                          ? <p className="text-xs text-text-muted italic">No blog articles linked. Click "Add Article" to add one.</p>
-                          : (
-                            <div className="flex flex-col gap-2">
-                              {selectedCat.blog.map(item => {
-                                const post = mockBlogPosts.find(p => p.id === item.postId); if (!post) return null
-                                return (
-                                  <div key={item.postId} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border hover:bg-grey-50 transition-colors">
-                                    <div className="flex-1 min-w-0">
-                                      <span className="inline-block text-[10px] font-semibold text-[#04619A] bg-[#EFF8FF] px-1.5 py-0.5 rounded mb-0.5">{post.category}</span>
-                                      <p className="text-sm text-text-primary font-medium leading-snug">{post.title}</p>
-                                    </div>
-                                    <button onClick={() => toggleBlogPostVisible(item.postId)} className={`p-1.5 rounded-md shrink-0 transition-colors ${item.visible ? 'text-brand-500 hover:bg-brand-50' : 'text-text-muted hover:bg-grey-100'}`}>
-                                      {item.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                    </button>
-                                    <button onClick={() => removeBlogPost(item.postId)} className="p-1.5 rounded-md shrink-0 text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )
-                        }
+                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-3">Related Content</p>
+                        <CatTabRelatedContent
+                          categoryId={selectedCat.id}
+                          categoryTagLinks={categoryTagLinks}
+                          contentTagLinks={contentTagLinks}
+                          items={categoryManualContent[selectedCat.id]}
+                          setItems={newList => setCategoryManualContent(prev => {
+                            if (newList === undefined) {
+                              const { [selectedCat.id]: _, ...rest } = prev
+                              return rest
+                            }
+                            return { ...prev, [selectedCat.id]: newList }
+                          })}
+                        />
                       </div>
                     </>
+                  )}
+
+                  {catPanelTab === 'tags' && (
+                    <CatTabTags
+                      categoryId={selectedCat.id}
+                      categoryTagLinks={categoryTagLinks}
+                      setCategoryTagLinks={setCategoryTagLinks}
+                    />
                   )}
 
                   {catPanelTab === 'general'  && <CatTabGeneral  item={selectedCat} onChange={updateCat} />}
@@ -1107,6 +1308,9 @@ export function MegaMenu() {
   const [tab, setTab] = useState('live')
   const [navLinks, setNavLinks] = useState(INITIAL_NAV_LINKS)
   const [categories, setCategories] = useState(INITIAL_CATEGORIES)
+  const [categoryTagLinks, setCategoryTagLinks] = useState(INITIAL_CAT_LINKS)
+  const [contentTagLinks] = useState(INITIAL_CONTENT_LINKS)
+  const [categoryManualContent, setCategoryManualContent] = useState({})
 
   return (
     <div className="flex flex-col gap-6">
@@ -1126,8 +1330,24 @@ export function MegaMenu() {
       </div>
 
       {tab === 'live'
-        ? <LiveMenuTab navLinks={navLinks} categories={categories} />
-        : <StructureTab navLinks={navLinks} setNavLinks={setNavLinks} categories={categories} setCategories={setCategories} />
+        ? <LiveMenuTab
+            navLinks={navLinks}
+            categories={categories}
+            categoryTagLinks={categoryTagLinks}
+            contentTagLinks={contentTagLinks}
+            categoryManualContent={categoryManualContent}
+          />
+        : <StructureTab
+            navLinks={navLinks}
+            setNavLinks={setNavLinks}
+            categories={categories}
+            setCategories={setCategories}
+            categoryTagLinks={categoryTagLinks}
+            setCategoryTagLinks={setCategoryTagLinks}
+            contentTagLinks={contentTagLinks}
+            categoryManualContent={categoryManualContent}
+            setCategoryManualContent={setCategoryManualContent}
+          />
       }
     </div>
   )
