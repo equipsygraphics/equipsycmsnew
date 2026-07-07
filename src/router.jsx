@@ -53,7 +53,6 @@ export const router = createBrowserRouter([
 
       // Commerce
       { path: '/products', element: <ProductsList /> },
-      { path: '/products/new', element: <ProductForm /> },
       { path: '/products/:id', element: <ProductForm /> },
       { path: '/attributes', element: <Attributes /> },
       { path: '/mega-menu', element: <MegaMenu /> },
@@ -70,16 +69,13 @@ export const router = createBrowserRouter([
       { path: '/pages', element: <Pages /> },
       { path: '/pages/:id', element: <PageDetail /> },
       { path: '/tags', element: <Tags /> },
-      { path: '/tags/new', element: <TagDetail /> },
       { path: '/tags/:id', element: <TagDetail /> },
       { path: '/blog', element: <BlogList /> },
-      { path: '/blog/new', element: <BlogForm /> },
       { path: '/blog/:id', element: <BlogForm /> },
       { path: '/media', element: <MediaLibrary /> },
 
       // Forms
       { path: '/forms', element: <FormsList /> },
-      { path: '/forms/new', element: <FormDetail /> },
       { path: '/forms/:id', element: <FormDetail /> },
 
       // Enquiries

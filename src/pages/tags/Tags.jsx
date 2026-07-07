@@ -130,6 +130,11 @@ export function Tags() {
   }
 
   const handleDelete = id => {
+    // Mutate module arrays so state is consistent after any navigation
+    const ti = INITIAL_TAGS.findIndex(t => t.id === id)
+    if (ti >= 0) INITIAL_TAGS.splice(ti, 1)
+    let i = INITIAL_CAT_LINKS.length; while (i--) { if (INITIAL_CAT_LINKS[i].tagId === id) INITIAL_CAT_LINKS.splice(i, 1) }
+
     setTags(prev => prev.filter(t => t.id !== id))
     setCategoryTagLinks(prev => prev.filter(l => l.tagId !== id))
     toast('Tag deleted', 'success')
