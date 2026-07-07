@@ -12,6 +12,8 @@ import { MegaMenu } from './pages/mega-menu/MegaMenu'
 import { Attributes } from './pages/attributes/Attributes'
 import { BlogList } from './pages/blog/BlogList'
 import { BlogForm } from './pages/blog/BlogForm'
+import { ResourceList } from './pages/resources/ResourceList'
+import { ResourceItem } from './pages/resources/ResourceItem'
 import { MediaLibrary } from './pages/media/MediaLibrary'
 import { Pages } from './pages/pages/Pages'
 import { PageDetail } from './pages/pages/PageDetail'
@@ -72,6 +74,8 @@ export const router = createBrowserRouter([
       { path: '/tags/:id', element: <TagDetail /> },
       { path: '/blog', element: <BlogList /> },
       { path: '/blog/:id', element: <BlogForm /> },
+      { path: '/resources', element: <ResourceList /> },
+      { path: '/resources/:typeSlug/:id', element: <ResourceItem /> },
       { path: '/media', element: <MediaLibrary /> },
 
       // Forms

@@ -22,7 +22,7 @@ const NAV = [
     label: 'Content', icon: FileText, children: [
       { label: 'Pages', icon: FileText, to: '/pages' },
       { label: 'Tags', icon: Hash, to: '/tags' },
-      { label: 'Blog', icon: BookOpen, to: '/blog' },
+      { label: 'Resources', icon: BookOpen, to: '/resources' },
       { label: 'Media & Resources', icon: FolderOpen, to: '/media' },
     ],
   },
