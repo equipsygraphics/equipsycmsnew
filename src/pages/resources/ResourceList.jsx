@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, BookOpen, FileText, HelpCircle, Image, Trash2, Edit2,
-  Settings, X, File, Layers, ExternalLink, ChevronDown, ChevronRight, ArrowLeft,
+  X, File, Layers, ExternalLink, ChevronDown, ChevronRight, ArrowLeft,
   Wrench, Check,
 } from 'lucide-react'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -554,16 +554,9 @@ export function ResourceList() {
         title="Resources"
         subtitle="Manage all downloadable and on-site content resources"
         actions={
-          <div className="flex gap-2">
-            <Button variant="secondary" icon={<Settings className="w-4 h-4" />} onClick={() => setShowWizard(true)}>
-              Add Type
-            </Button>
-            {activeType && (
-              <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={handleNew}>
-                {newLabel}
-              </Button>
-            )}
-          </div>
+          <Button variant="secondary" icon={<Plus className="w-4 h-4" />} onClick={() => setShowWizard(true)}>
+            New Resource Type
+          </Button>
         }
       />
 
@@ -609,7 +602,12 @@ export function ResourceList() {
                 <span className="text-xs text-text-muted bg-grey-100 px-1.5 py-0.5 rounded-full">filtered view</span>
               ) : null}
             </div>
-            <span className="text-xs text-text-muted">{tabItems.length} item{tabItems.length !== 1 ? 's' : ''}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-text-muted">{tabItems.length} item{tabItems.length !== 1 ? 's' : ''}</span>
+              <Button variant="primary" size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={handleNew}>
+                {newLabel}
+              </Button>
+            </div>
           </div>
 
           {/* Category filter */}
