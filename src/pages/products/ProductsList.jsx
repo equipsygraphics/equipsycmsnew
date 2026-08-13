@@ -7,7 +7,7 @@ import { CSVExport } from '../../components/ui/CSVExport'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { ConfirmModal } from '../../components/ui/Modal'
 import { toast } from '../../components/ui/Toast'
-import { mockProducts, CATEGORIES, getStockStatus } from '../../data/mockProducts'
+import { mockProducts, PRIMARY_CATEGORIES, getStockStatus } from '../../data/mockProducts'
 
 const STATUS_TABS = [
   { key: 'all', label: 'All' },
@@ -112,7 +112,7 @@ export function ProductsList() {
             className="h-9 px-3 rounded-lg border border-border bg-surface text-sm text-text-primary outline-none focus:border-brand-500"
           >
             <option value="all">Category: All</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {PRIMARY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
       </div>

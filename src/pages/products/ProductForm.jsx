@@ -7,7 +7,7 @@ import { MediaPicker } from '../../components/ui/MediaPicker'
 import { RichTextEditor } from '../../components/ui/RichTextEditor'
 import { toast } from '../../components/ui/Toast'
 import { MediaLibraryModal } from '../../components/ui/MediaLibraryModal'
-import { mockProducts, CATEGORIES, SUBCATEGORIES } from '../../data/mockProducts'
+import { mockProducts, PRIMARY_CATEGORIES, CATEGORIES, SUBCATEGORIES } from '../../data/mockProducts'
 import { useProductCost } from '../../context/ProductCostContext'
 import { usePricingSettings } from '../../context/PricingSettingsContext'
 import { useAttributes } from '../../context/AttributesContext'
@@ -417,10 +417,10 @@ function TabGeneral({ form, setForm }) {
               onChange={e => setForm(f => ({ ...f, category: e.target.value, subCategory: '' }))}
             >
               <option value="">Select category…</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {PRIMARY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </Select>
           </Field>
-          <Field label="Subcategory" hint={!form.category ? 'Select a primary category first' : undefined}>
+          <Field label="Subcategory" required hint={!form.category ? 'Select a primary category first' : undefined}>
             <Select
               value={form.subCategory}
               onChange={e => setForm(f => ({ ...f, subCategory: e.target.value }))}
@@ -713,17 +713,17 @@ function TabPricing({ form, setForm, product, isNew }) {
   // just be $0.
   const [draftPosition, setDraftPosition] = useState(null)
   const hasDraftName = !!form.name?.trim()
-  const hasDraftCategory = !!form.category
+  const hasDraftSubCategory = !!form.subCategory
   const hasDraftAttributes = Object.values(form.attributes ?? {}).some(vals => vals.length > 0)
   const draftMissing = [
     !hasDraftName && 'product name',
-    !hasDraftCategory && 'category',
+    !hasDraftSubCategory && 'category & subcategory',
     !hasDraftAttributes && 'at least one attribute value',
   ].filter(Boolean)
   const canRunDraftAnalysis = draftMissing.length === 0
   const runDraftCompetitorAnalysis = () => {
-    if (!form.category) {
-      toast('Select a category on the General tab first — competitor matching is scoped per category.', 'error')
+    if (!form.subCategory) {
+      toast('Select a category and subcategory on the General tab first — competitor matching is scoped per subcategory.', 'error')
       return
     }
     const startingPrice = parseFloat(form.price) || 0
@@ -731,7 +731,7 @@ function TabPricing({ form, setForm, product, isNew }) {
       toast('Enter an estimated Retail Price first — competitor prices are synthesized relative to it.', 'error')
       return
     }
-    const draftProduct = { id: -1, category: form.category, price: startingPrice }
+    const draftProduct = { id: -1, subCategory: form.subCategory, price: startingPrice }
     const result = buildProductPricePosition(
       draftProduct, competitors, attributes, priceRules, coreAttributeSelection, variantAttributeSelection, null, false
     )
@@ -740,12 +740,12 @@ function TabPricing({ form, setForm, product, isNew }) {
       setForm(f => ({ ...f, price: result.recommendedPrice }))
       toast(`Competitor analysis complete — retail price set to $${result.recommendedPrice.toFixed(2)}`, 'success')
     } else {
-      toast('Competitor analysis complete — no valid competitor matches found for this category yet.', 'info')
+      toast('Competitor analysis complete — no valid competitor matches found for this subcategory yet.', 'info')
     }
   }
 
   const effectiveDiscounts = product ? getEffectiveDiscounts(product) : null
-  const categoryDefaults = product ? categoryDiscounts[product.category] : null
+  const categoryDefaults = product ? categoryDiscounts[product.subCategory] : null
 
   // Saved products' Trade/Bulk/Bulk Trade discounts live in DiscountSettingsContext
   // (category default, or a per-product override) so they can be bulk-managed
@@ -810,7 +810,7 @@ function TabPricing({ form, setForm, product, isNew }) {
 
   const goToSpecMatchingVariant = () => navigate(`/attributes?${new URLSearchParams({ view: 'Stage 2 Match Attributes' })}`)
   const goToPricingFormula = () => navigate(`/competitor-pricing?${new URLSearchParams({ tab: 'Pricing Formula' })}`)
-  const goToAnalysisDetails = () => navigate(`/competitor-pricing?${new URLSearchParams({ tab: 'Overview', product: String(product.id) })}`)
+  const goToAnalysisDetails = () => navigate(`/competitor-pricing?${new URLSearchParams({ tab: 'Price List', product: String(product.id) })}`)
 
   const mainContent = (
     <div className="flex flex-col gap-4 flex-1 min-w-0">
@@ -1584,19 +1584,22 @@ function AttributeSelector({ attributes, selected = {}, onChange, addValue, onAd
 function TabAttributes({ form, setForm }) {
   const isVariable = form.type === 'variable'
   const { attributes, addAttribute, addValue } = useAttributes()
-  const categoryAttributes = form.category ? categoryAttributePool(attributes, form.category) : []
+  // Scoped by Subcategory (the granular classification, e.g. "Modular Grab
+  // Rails"), not the broad Primary Category — attribute assignments and
+  // Stage 1/2 selections are all keyed at that level.
+  const categoryAttributes = form.subCategory ? categoryAttributePool(attributes, form.subCategory) : []
 
   const [newAttrOpen, setNewAttrOpen] = useState(false)
   const [newAttrEditing, setNewAttrEditing] = useState(null)
 
   const openNewAttribute = () => {
-    setNewAttrEditing({ id: null, name: '', type: 'categorical', unit: '', categories: form.category ? [form.category] : [], values: [] })
+    setNewAttrEditing({ id: null, name: '', type: 'categorical', unit: '', categories: form.subCategory ? [form.subCategory] : [], values: [] })
     setNewAttrOpen(true)
   }
   const saveNewAttribute = () => {
     if (!newAttrEditing.name.trim()) return
     addAttribute(newAttrEditing)
-    toast(`Attribute "${newAttrEditing.name}" added${form.category ? ` to ${form.category}` : ''}`, 'success')
+    toast(`Attribute "${newAttrEditing.name}" added${form.subCategory ? ` to ${form.subCategory}` : ''}`, 'success')
     setNewAttrOpen(false)
   }
 
@@ -1611,11 +1614,11 @@ function TabAttributes({ form, setForm }) {
 
   const [openIdx, setOpenIdx] = useState(null)
 
-  if (!form.category) {
+  if (!form.subCategory) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-2 text-text-muted">
-        <p className="font-medium text-text-secondary">No category selected</p>
-        <p className="text-sm">Set this product's category on the General tab to see its assigned attributes.</p>
+        <p className="font-medium text-text-secondary">No subcategory selected</p>
+        <p className="text-sm">Set this product's Primary Category and Subcategory on the General tab to see its assigned attributes.</p>
       </div>
     )
   }
@@ -1696,7 +1699,7 @@ function TabAttributes({ form, setForm }) {
       <SectionCard title="Attributes">
         <p className="text-xs text-text-muted -mt-2">
           Select the attribute values that apply to this product — scoped to attributes assigned to{' '}
-          <strong>{form.category}</strong> on the Attributes page's Category Assignments view.
+          <strong>{form.subCategory}</strong> on the Attributes page's Category Assignments view.
         </p>
         <AttributeSelector
           attributes={categoryAttributes}
@@ -1767,14 +1770,27 @@ export function ProductForm() {
     material: '', finish: '', colour: '', packagingDimensions: '', packagingWeight: '',
     customSpecs: [],
     price: '', tradePrice: '', sku: '', stock: '',
-    category: '', subCategory: '', gst: true, bulky: false, custom: false, pallet: false,
+    category: '', subCategory: '', status: 'draft', gst: true, bulky: false, custom: false, pallet: false,
     slug: '', metaTitle: '', metaDesc: '',
     gallery: [], installs: [], resources: [],
     specs: [], faqs: [], variationTypes: [],
   })
 
   const handleSave = (status) => {
-    toast(isNew ? `Product "${form.name || 'Untitled'}" created as ${status}` : `Product saved`, 'success')
+    const missing = [
+      !form.name?.trim() && 'product name',
+      !form.category && 'primary category',
+      !form.subCategory && 'subcategory',
+    ].filter(Boolean)
+    if (missing.length > 0) {
+      toast(`Fill in ${missing.join(', ')} before saving (General tab).`, 'error')
+      setActiveTab('General')
+      return
+    }
+    const message = status === 'published'
+      ? `Product "${form.name}" published — now live on the website.`
+      : `Product "${form.name}" saved as a draft — changes won't be live until published.`
+    toast(message, 'success')
     navigate('/products')
   }
 
@@ -1806,7 +1822,7 @@ export function ProductForm() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="secondary" onClick={() => handleSave('draft')}>Save Draft</Button>
-          <Button variant="primary" onClick={() => handleSave('published')}>Save Product</Button>
+          <Button variant="primary" onClick={() => handleSave('published')}>Publish Changes</Button>
         </div>
       </div>
 

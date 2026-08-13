@@ -27,7 +27,7 @@ export function ProductMatchDrawer({ open, onClose, product, pricing, position, 
         <div className="flex items-center gap-2 text-sm text-text-muted">
           <span>{product.sku}</span>
           <span>·</span>
-          <Badge variant="grey" label={product.category} />
+          <Badge variant="grey" label={product.subCategory} />
         </div>
 
         {pricing && (

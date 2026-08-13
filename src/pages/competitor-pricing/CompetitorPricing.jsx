@@ -14,7 +14,7 @@ import { usePricingSettings } from '../../context/PricingSettingsContext'
 import { useCompetitorPricingConfig } from '../../context/CompetitorPricingConfigContext'
 import { buildAllPricePositions } from '../../data/mockMatching'
 
-const TABS = ['Overview', 'Competitors', 'Pricing Formula', 'Pricing Discounts', 'Spec Matching', 'Settings']
+const TABS = ['Price List', 'Competitors', 'Pricing Formula', 'Pricing Discounts', 'Spec Matching', 'Settings']
 
 export function CompetitorPricing() {
   const navigate = useNavigate()
@@ -29,7 +29,7 @@ export function CompetitorPricing() {
   } = useCompetitorPricingConfig()
 
   const [searchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'Overview')
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'Price List')
   // null = idle, 'all' = bulk scrape, or a specific competitor id
   const [scrapingTarget, setScrapingTarget] = useState(null)
 
@@ -89,7 +89,7 @@ export function CompetitorPricing() {
         ))}
       </div>
 
-      {activeTab === 'Overview' && (
+      {activeTab === 'Price List' && (
         <Overview positions={positions} onEditVariantAttributes={goToEditVariantAttributes} onEditStandardMargin={goToPricingFormula} />
       )}
       {activeTab === 'Competitors' && (

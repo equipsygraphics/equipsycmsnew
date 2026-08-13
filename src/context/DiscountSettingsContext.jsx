@@ -3,12 +3,17 @@ import { DEFAULT_CATEGORY_DISCOUNTS } from '../data/mockDiscountSettings'
 
 const DiscountSettingsContext = createContext(null)
 
-const FIELDS = ['tradeDiscount', 'bulkDiscount', 'bulkTradeDiscount', 'mamDiscount']
+const FIELDS = [
+  'tradeDiscount', 'bulkDiscount',
+  'box2Discount', 'box3Discount', 'box4Discount', 'box5Discount',
+  'bulkTradeDiscount', 'mamDiscount',
+]
 
-// Trade / Bulk / Bulk Trade discount % — category-level defaults that every
-// product inherits, plus sparse per-product overrides for exceptions. Mounted
-// once in AppShell so the Product Pricing tab and the Pricing Discounts page
-// (category defaults + bulk-edit) read/write the same state.
+// Trade / Bulk / Trade Volume (2-5 box) / Bulk Trade / MAM discount % —
+// category-level defaults that every product inherits, plus sparse
+// per-product overrides for exceptions. Mounted once in AppShell so the
+// Product Pricing tab and the Pricing Discounts page (category defaults +
+// bulk-edit) read/write the same state.
 export function DiscountSettingsProvider({ children }) {
   const [categoryDiscounts, setCategoryDiscounts] = useState(() => ({ ...DEFAULT_CATEGORY_DISCOUNTS }))
   const [productOverrides, setProductOverrides] = useState({}) // { [productId]: { tradeDiscount?, bulkDiscount?, bulkTradeDiscount? } }
@@ -60,18 +65,18 @@ export function DiscountSettingsProvider({ children }) {
 
   // Resolved discounts for a product: override where set, category default
   // otherwise, plus which fields are actually overridden (for UI badges).
+  // Keyed by subCategory (the granular classification), not the broad
+  // Primary Category, since that's the level category discounts are set at.
   const getEffectiveDiscounts = (product) => {
-    const defaults = categoryDiscounts[product.category] || { tradeDiscount: 0, bulkDiscount: 0, bulkTradeDiscount: 0, mamDiscount: 0 }
+    const defaults = categoryDiscounts[product.subCategory] || {}
     const override = productOverrides[product.id] || {}
     const isOverridden = {}
-    FIELDS.forEach(f => { isOverridden[f] = override[f] != null })
-    return {
-      tradeDiscount: override.tradeDiscount ?? defaults.tradeDiscount,
-      bulkDiscount: override.bulkDiscount ?? defaults.bulkDiscount,
-      bulkTradeDiscount: override.bulkTradeDiscount ?? defaults.bulkTradeDiscount,
-      mamDiscount: override.mamDiscount ?? defaults.mamDiscount,
-      isOverridden,
-    }
+    const resolved = {}
+    FIELDS.forEach(f => {
+      isOverridden[f] = override[f] != null
+      resolved[f] = override[f] ?? defaults[f] ?? 0
+    })
+    return { ...resolved, isOverridden }
   }
 
   return (
@@ -81,6 +86,11 @@ export function DiscountSettingsProvider({ children }) {
         productOverrides, setProductOverride, clearProductOverride,
         bulkApply, bulkClear,
         getEffectiveDiscounts,
+        // Wholesale restores for an undo stack — callers snapshot
+        // categoryDiscounts/productOverrides before a mutation and hand the
+        // snapshot back here to revert it in one step.
+        restoreCategoryDiscounts: setCategoryDiscounts,
+        restoreProductOverrides: setProductOverrides,
       }}
     >
       {children}

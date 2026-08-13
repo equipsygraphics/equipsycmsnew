@@ -8,6 +8,7 @@ import { CostVariablesProvider } from '../../context/CostVariablesContext'
 import { PricingSettingsProvider } from '../../context/PricingSettingsContext'
 import { CompetitorPricingConfigProvider } from '../../context/CompetitorPricingConfigContext'
 import { DiscountSettingsProvider } from '../../context/DiscountSettingsContext'
+import { TradeVolumePricingProvider } from '../../context/TradeVolumePricingContext'
 
 // Every page in the app sits under all of these — combined here so adding a
 // new shared context doesn't mean another level of visual nesting below.
@@ -18,6 +19,7 @@ const PROVIDERS = [
   PricingSettingsProvider,
   CompetitorPricingConfigProvider,
   DiscountSettingsProvider,
+  TradeVolumePricingProvider,
 ]
 
 function ComposedProviders({ children }) {

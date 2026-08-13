@@ -181,7 +181,7 @@ export function CompetitorCoreMatchView({ competitor, positions, onBack, onEditC
       id: product.id,
       productName: product.name,
       sku: product.sku,
-      category: product.category,
+      category: product.subCategory,
       competitorTitle: match.competitorTitle,
       coreChecks: match.coreChecks,
       coreChecksText: coreChecksToText(match.coreChecks),

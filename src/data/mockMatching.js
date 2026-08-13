@@ -235,7 +235,7 @@ function synthCompetitorTitle(product, competitorSeed) {
   if (mode === 0) return product.name
   if (mode === 1) return `${product.name} ${suffix}`
   if (mode === 2) return product.name.split(' ').reverse().join(' ')
-  return `${product.category} ${suffix} Model ${100 + ((product.id * 7 + competitorSeed) % 50)}`
+  return `${product.subCategory} ${suffix} Model ${100 + ((product.id * 7 + competitorSeed) % 50)}`
 }
 
 // Values are plain strings on the shared attribute — for numeric attributes
@@ -294,9 +294,9 @@ export function matchCompetitorProduct(
   const competitorSeed = hashSeed(competitor.id)
   const synthPrice = synthCompetitorPrice(product, competitorSeed)
   const competitorTitle = synthCompetitorTitle(product, competitorSeed)
-  const attributePool = categoryAttributePool(attributes, product.category)
+  const attributePool = categoryAttributePool(attributes, product.subCategory)
 
-  const coreIds = coreAttributeSelection[product.category] || []
+  const coreIds = coreAttributeSelection[product.subCategory] || []
   const coreChecks = coreIds
     .map(id => attributePool.find(a => a.id === id))
     .filter(a => a && a.values.length > 0)
@@ -316,7 +316,7 @@ export function matchCompetitorProduct(
 
   let variantResults = []
   if (corePass) {
-    const variantIds = variantAttributeSelection[product.category] || []
+    const variantIds = variantAttributeSelection[product.subCategory] || []
     variantResults = variantIds
       .map(id => attributePool.find(a => a.id === id))
       .filter(a => a && a.type === 'numeric' && a.values.length > 0)
@@ -350,7 +350,7 @@ export function buildProductPricePosition(
   costFallback = null, // { cost, standardMarginPct } — used when no viable competitors are found
   forceStandardMargin = false
 ) {
-  const attempted = competitors.filter(c => c.categories.includes(product.category))
+  const attempted = competitors.filter(c => c.categories.includes(product.subCategory))
   const matches = attempted.map(c => matchCompetitorProduct(product, c, attributes, coreAttributeSelection, variantAttributeSelection))
   const viable = forceStandardMargin ? [] : matches.filter(m => m.corePass)
 
@@ -375,8 +375,8 @@ export function buildProductPricePosition(
     return { product, matches, viable, attributeResults: [], finalPosition: null, competitorAvgPrice: null, recommendedPrice: null, usedStandardMargin: false, forcedStandardMargin: forceStandardMargin }
   }
 
-  const variantIds = variantAttributeSelection[product.category] || []
-  const attributePool = categoryAttributePool(attributes, product.category)
+  const variantIds = variantAttributeSelection[product.subCategory] || []
+  const attributePool = categoryAttributePool(attributes, product.subCategory)
   const attributeResults = variantIds
     .map(id => attributePool.find(a => a.id === id))
     .filter(Boolean)

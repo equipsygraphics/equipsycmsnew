@@ -3,7 +3,8 @@
 Sidebar label "Product Pricing" (was "Competitor Pricing" — renamed since the page covers the full
 retail/trade/bulk/MAM pricing ladder, not just competitor comparison). Route `/competitor-pricing` and the
 component/folder/context names are unchanged. Sidebar under Commerce. Tab-based (`CompetitorPricing.jsx`):
-**Overview, Competitors, Pricing Formula, Pricing Discounts, Spec Matching, Settings**.
+**Price List, Competitors, Pricing Formula, Pricing Discounts, Spec Matching, Settings** (Price List tab =
+`tabs/Overview.jsx`, was labelled "Overview").
 
 **Pricing Discounts** (`tabs/PricingDiscounts.jsx`) also moved here — was its own sidebar page/route
 (`/pricing-discounts`), now a tab since it's just another lever (Trade/Bulk/Bulk Trade/MAM discount %,
@@ -18,7 +19,7 @@ throttling/retries, and crawler identity/compliance (`tabs/SpecMatching.jsx`, co
 exist so "Scrape All Competitors" (Competitors tab) has real, editable settings behind it rather than being
 purely cosmetic.
 
-## Overview
+## Price List (tabs/Overview.jsx)
 
 A sortable/searchable table of every product's full pricing ladder, based on the Figma table header
 (node `2947:131963`): Name, Category, SKU, Total cost, Retail price, Retail margin, Trade discount,
