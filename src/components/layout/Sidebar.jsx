@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShoppingBag, Tag, Navigation, ShoppingCart, Users,
   FileText, Hash, BookOpen, FolderOpen, MessageSquare, Briefcase, Package,
   Megaphone, Ticket, Mail, Rss, BarChart2, Globe, Search, Settings, UserCog, Sliders,
-  ChevronDown, ChevronRight, ClipboardList,
+  ChevronDown, ChevronRight, ClipboardList, Scale,
 } from 'lucide-react'
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
       { label: 'Mega Menu', icon: Navigation, to: '/mega-menu' },
       { label: 'Orders', icon: ShoppingCart, to: '/orders' },
       { label: 'Customers', icon: Users, to: '/customers' },
+      { label: 'Product Pricing', icon: Scale, to: '/competitor-pricing' },
     ],
   },
   {

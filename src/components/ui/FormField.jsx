@@ -48,11 +48,17 @@ export function Select({ error, children, className = '', ...props }) {
   )
 }
 
-export function Toggle({ checked, onChange, label, description }) {
+export function Toggle({ checked, onChange, label, description, disabled = false }) {
   return (
-    <label className="flex items-start gap-3 cursor-pointer">
+    <label className={`flex items-start gap-3 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
       <div className="relative mt-0.5 shrink-0">
-        <input type="checkbox" className="sr-only" checked={checked} onChange={e => onChange(e.target.checked)} />
+        <input
+          type="checkbox"
+          className="sr-only"
+          checked={checked}
+          disabled={disabled}
+          onChange={e => onChange(e.target.checked)}
+        />
         <div className={`w-10 h-6 rounded-full transition-colors ${checked ? 'bg-brand-500' : 'bg-grey-200'}`} />
         <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-xs transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
       </div>

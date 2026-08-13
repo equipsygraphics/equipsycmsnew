@@ -1,17 +1,18 @@
 ﻿import { useState } from 'react'
-import { CheckCircle, XCircle, Link, Unlink } from 'lucide-react'
+import { CheckCircle, XCircle, Link, Unlink, CalendarClock } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Field, Input, Select, Toggle } from '../../components/ui/FormField'
 import { toast } from '../../components/ui/Toast'
 
-const TABS = ['Store Details', 'Shipping', 'Payments', 'Integrations', 'Advanced']
+const TABS = ['Store Details', 'Shipping', 'Payments', 'Integrations', 'Competitor Pricing', 'Advanced']
 
 const INTEGRATIONS = [
   { id: 'shippit', name: 'Shippit', desc: 'Shipping automation', category: 'Shipping', connected: true },
   { id: 'klaviyo', name: 'Klaviyo', desc: 'Email marketing', category: 'Marketing', connected: true },
   { id: 'ga4', name: 'Google Analytics 4', desc: 'Web analytics', category: 'Analytics', connected: true },
   { id: 'sharepoint', name: 'SharePoint', desc: 'Media library sync', category: 'Storage', connected: true },
+  { id: 'datapel', name: 'Datapel', desc: 'Inventory & pricing sync', category: 'Operations', connected: true },
   { id: 'xero', name: 'Xero', desc: 'Accounting & invoicing', category: 'Finance', connected: false },
   { id: 'mailchimp', name: 'Mailchimp', desc: 'Email campaigns', category: 'Marketing', connected: false },
 ]
@@ -50,6 +51,12 @@ export function Settings() {
     gstInclusive: true,
   })
 
+  const [competitorPricingForm, setCompetitorPricingForm] = useState({
+    autoSyncDatapel: false,
+    autoExportSharePoint: false,
+    fiscalYearEnd: 'June 30',
+  })
+
   const [advancedForm, setAdvancedForm] = useState({
     maintenanceMode: false,
     allowGuestCheckout: true,
@@ -72,6 +79,12 @@ export function Settings() {
   const setShipping = (k, v) => setShippingForm(f => ({ ...f, [k]: v }))
   const setPayment = (k, v) => setPaymentForm(f => ({ ...f, [k]: v }))
   const setAdvanced = (k, v) => setAdvancedForm(f => ({ ...f, [k]: v }))
+  const setCompetitorPricing = (k, v) => {
+    setCompetitorPricingForm(f => ({ ...f, [k]: v }))
+    if (k === 'autoSyncDatapel' || k === 'autoExportSharePoint') {
+      toast(v ? 'Automation enabled' : 'Automation disabled', v ? 'success' : 'info')
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -225,6 +238,55 @@ export function Settings() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {activeTab === 'Competitor Pricing' && (
+            <div className="flex flex-col gap-4">
+              <div className="bg-surface rounded-xl border border-border p-5 flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4 text-text-muted" />
+                  <p className="text-sm font-semibold text-text-primary">Fiscal Year-End Automation</p>
+                </div>
+                <p className="text-xs text-text-muted -mt-2">
+                  When enabled, the competitor pricing bot re-runs automatically at fiscal year end and pushes its output without a manual trigger. This setting is independent of the 5-step research flow.
+                </p>
+                <div className="flex items-center justify-between py-3 border-b border-border">
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Auto-sync pricing to Datapel</p>
+                    <p className="text-xs text-text-muted">Pushes recommended prices from the pricing calculator straight into Datapel.</p>
+                  </div>
+                  <Toggle checked={competitorPricingForm.autoSyncDatapel} onChange={v => setCompetitorPricing('autoSyncDatapel', v)} />
+                </div>
+                <div className="flex items-center justify-between py-3 border-b border-border">
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Auto-export to SharePoint</p>
+                    <p className="text-xs text-text-muted">Archives the full pricing output spreadsheet to SharePoint for record-keeping.</p>
+                  </div>
+                  <Toggle checked={competitorPricingForm.autoExportSharePoint} onChange={v => setCompetitorPricing('autoExportSharePoint', v)} />
+                </div>
+                <Field label="Fiscal Year-End Date" hint="Automation runs on this date each year">
+                  <Input value={competitorPricingForm.fiscalYearEnd} onChange={e => setCompetitorPricing('fiscalYearEnd', e.target.value)} className="w-48" />
+                </Field>
+              </div>
+
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
+                <div className="px-5 py-4 border-b border-border">
+                  <p className="text-sm font-semibold text-text-primary">Related Integrations</p>
+                </div>
+                {integrations.filter(i => ['datapel', 'sharepoint'].includes(i.id)).map((int, i) => (
+                  <div key={int.id} className={`flex items-center justify-between px-5 py-4 ${i > 0 ? 'border-t border-border' : ''}`}>
+                    <div>
+                      <p className="text-sm font-medium text-text-primary">{int.name}</p>
+                      <p className="text-xs text-text-muted">{int.desc}</p>
+                    </div>
+                    <span className={`flex items-center gap-1.5 text-xs font-medium ${int.connected ? 'text-success-500' : 'text-text-muted'}`}>
+                      {int.connected ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                      {int.connected ? 'Connected' : 'Not connected'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

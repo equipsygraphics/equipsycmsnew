@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, GripVertical, Upload } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, Plus, Trash2, GripVertical, Upload } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Field, Input, Textarea, Select, Toggle } from '../../components/ui/FormField'
 import { MediaPicker } from '../../components/ui/MediaPicker'
@@ -8,8 +8,18 @@ import { RichTextEditor } from '../../components/ui/RichTextEditor'
 import { toast } from '../../components/ui/Toast'
 import { MediaLibraryModal } from '../../components/ui/MediaLibraryModal'
 import { mockProducts, CATEGORIES, SUBCATEGORIES } from '../../data/mockProducts'
+import { useProductCost } from '../../context/ProductCostContext'
+import { usePricingSettings } from '../../context/PricingSettingsContext'
+import { useAttributes } from '../../context/AttributesContext'
+import { AttributeEditorDrawer } from '../attributes/AttributeEditorDrawer'
+import { useCompetitorPricingConfig } from '../../context/CompetitorPricingConfigContext'
+import { useDiscountSettings } from '../../context/DiscountSettingsContext'
+import { computeCostBreakdown, LABOUR_RATES, PACKING_METHODS } from '../../data/mockCostBreakdown'
+import { buildProductPricePosition, categoryAttributePool } from '../../data/mockMatching'
+import { CostVariablesModal } from '../cost-variables/CostVariablesModal'
+import { CompetitorMatchAnalysis } from '../competitor-pricing/components/CompetitorMatchAnalysis'
 
-const TABS = ['General', 'Variations', 'Completed Installs', 'Pricing', 'Inventory', 'Attributes', 'SEO']
+const TABS = ['General', 'Variations', 'Completed Installs', 'Cost', 'Pricing', 'Inventory', 'Attributes', 'SEO']
 
 const PRODUCT_TYPES = [
   { value: 'standard', label: 'Standard', desc: 'Fixed price, stock tracking' },
@@ -645,24 +655,165 @@ function TabCategories({ form, setForm }) {
   )
 }
 
-function TabPricing({ form, setForm }) {
-  const tradeDiscount = form.tradeDiscount ?? 0
-  const bulkDiscount = form.bulkDiscount ?? 0
+function applyDiscount(base, discountPct) {
+  return base != null && discountPct > 0 ? Math.round(base * (1 - discountPct / 100) * 100) / 100 : null
+}
+
+function DiscountOverrideNote({ isOverridden, categoryDefault, onReset }) {
+  return (
+    <p className="text-xs text-text-muted">
+      {isOverridden ? (
+        <>
+          Overridden for this product — category default is {categoryDefault}%.{' '}
+          <button type="button" onClick={onReset} className="text-brand-500 hover:text-brand-600 hover:underline font-medium">
+            Reset to category default
+          </button>
+        </>
+      ) : (
+        'Using this product’s category default. Edit the field to override just this product.'
+      )}
+    </p>
+  )
+}
+
+function SummaryRow({ label, price, sub, margin }) {
+  return (
+    <div className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+      <span className="text-sm text-text-secondary">{label}</span>
+      <div className="text-right">
+        <span className="text-sm font-semibold text-text-primary">{price != null ? `$${price.toFixed(2)}` : '—'}</span>
+        {sub && <span className="block text-xs text-text-muted">{sub}</span>}
+        {margin != null && <span className="block text-xs font-medium text-text-secondary">{Math.round(margin * 100)}% margin</span>}
+      </div>
+    </div>
+  )
+}
+
+function TabPricing({ form, setForm, product, isNew }) {
+  const navigate = useNavigate()
+  const { costRecords } = useProductCost()
+  const { attributes } = useAttributes()
+  const {
+    standardMarginPct,
+    forceStandardMarginMap, setForceStandardMargin,
+    manualRetailPriceMap, setManualRetailPrice,
+  } = usePricingSettings()
+  const { competitors, priceRules, coreAttributeSelection, variantAttributeSelection } = useCompetitorPricingConfig()
+  const { categoryDiscounts, setProductOverride, clearProductOverride, getEffectiveDiscounts } = useDiscountSettings()
+
+  // For a not-yet-saved product there's no id to key cost/competitor data
+  // against, so this runs the same Stage 1/2 engine against a throwaway
+  // "draft" product built from the form fields entered so far, instead of
+  // requiring a save first. No cost record exists yet either, so there's no
+  // standard-margin fallback here — if no competitor passes Stage 1, the
+  // draft simply has no recommended price to apply. Synthetic competitor
+  // prices are generated relative to our own price (see mockMatching.js),
+  // so an estimated starting Retail Price is required too — without one,
+  // every synthesized competitor price (and so the recommendation) would
+  // just be $0.
+  const [draftPosition, setDraftPosition] = useState(null)
+  const hasDraftName = !!form.name?.trim()
+  const hasDraftCategory = !!form.category
+  const hasDraftAttributes = Object.values(form.attributes ?? {}).some(vals => vals.length > 0)
+  const draftMissing = [
+    !hasDraftName && 'product name',
+    !hasDraftCategory && 'category',
+    !hasDraftAttributes && 'at least one attribute value',
+  ].filter(Boolean)
+  const canRunDraftAnalysis = draftMissing.length === 0
+  const runDraftCompetitorAnalysis = () => {
+    if (!form.category) {
+      toast('Select a category on the General tab first — competitor matching is scoped per category.', 'error')
+      return
+    }
+    const startingPrice = parseFloat(form.price) || 0
+    if (startingPrice <= 0) {
+      toast('Enter an estimated Retail Price first — competitor prices are synthesized relative to it.', 'error')
+      return
+    }
+    const draftProduct = { id: -1, category: form.category, price: startingPrice }
+    const result = buildProductPricePosition(
+      draftProduct, competitors, attributes, priceRules, coreAttributeSelection, variantAttributeSelection, null, false
+    )
+    setDraftPosition(result)
+    if (result.recommendedPrice != null) {
+      setForm(f => ({ ...f, price: result.recommendedPrice }))
+      toast(`Competitor analysis complete — retail price set to $${result.recommendedPrice.toFixed(2)}`, 'success')
+    } else {
+      toast('Competitor analysis complete — no valid competitor matches found for this category yet.', 'info')
+    }
+  }
+
+  const effectiveDiscounts = product ? getEffectiveDiscounts(product) : null
+  const categoryDefaults = product ? categoryDiscounts[product.category] : null
+
+  // Saved products' Trade/Bulk/Bulk Trade discounts live in DiscountSettingsContext
+  // (category default, or a per-product override) so they can be bulk-managed
+  // from the Pricing Discounts page. A brand-new, unsaved product has no id to
+  // key an override against yet, so it falls back to the local form field.
+  const tradeDiscount = product ? effectiveDiscounts.tradeDiscount : (form.tradeDiscount ?? 0)
+  const bulkDiscount = product ? effectiveDiscounts.bulkDiscount : (form.bulkDiscount ?? 0)
+  const bulkTradeDiscount = product ? effectiveDiscounts.bulkTradeDiscount : (form.bulkTradeDiscount ?? 0)
+  const mamDiscount = product ? effectiveDiscounts.mamDiscount : (form.mamDiscount ?? 0)
+  const setTradeDiscount = v => (product ? setProductOverride(product.id, 'tradeDiscount', v) : setForm(f => ({ ...f, tradeDiscount: v })))
+  const setBulkDiscount = v => (product ? setProductOverride(product.id, 'bulkDiscount', v) : setForm(f => ({ ...f, bulkDiscount: v })))
+  const setBulkTradeDiscount = v => (product ? setProductOverride(product.id, 'bulkTradeDiscount', v) : setForm(f => ({ ...f, bulkTradeDiscount: v })))
+
   const saleDiscount = form.saleDiscount ?? 0
   const retailPrice = parseFloat(form.price) || 0
 
-  const tradeCalc = tradeDiscount > 0 && retailPrice > 0
-    ? `$${(retailPrice * (1 - tradeDiscount / 100)).toFixed(2)}`
-    : ''
-  const bulkCalc = bulkDiscount > 0 && retailPrice > 0
-    ? `$${(retailPrice * (1 - bulkDiscount / 100)).toFixed(2)}`
-    : ''
+  const tradePriceNum = applyDiscount(retailPrice > 0 ? retailPrice : null, tradeDiscount)
+  const bulkPriceNum = applyDiscount(retailPrice > 0 ? retailPrice : null, bulkDiscount)
+  const tradeCalc = tradePriceNum != null ? `$${tradePriceNum.toFixed(2)}` : ''
+  const bulkCalc = bulkPriceNum != null ? `$${bulkPriceNum.toFixed(2)}` : ''
+  const bulkTradeCalc = applyDiscount(bulkPriceNum, bulkTradeDiscount)
+  // MAM is its own tier off retail (like Trade/Bulk), not a further discount
+  // off Bulk — kept separate from Bulk Trade so the two don't get conflated.
+  const mamPriceNum = applyDiscount(retailPrice > 0 ? retailPrice : null, mamDiscount)
   const saleCalc = saleDiscount > 0 && retailPrice > 0
     ? `$${(retailPrice * (1 - saleDiscount / 100)).toFixed(2)}`
     : ''
 
-  return (
-    <div className="flex flex-col gap-4">
+  const costBreakdown = !isNew && product ? computeCostBreakdown(costRecords[product.id]) : null
+  const costFallback = costBreakdown ? { cost: costBreakdown.totalCost, standardMarginPct } : null
+
+  // Whether real competitor data exists is checked independently of the
+  // current toggle state, so a product the user hasn't touched yet defaults
+  // sensibly: "Use Competitor Pricing" on if there's something to use, off
+  // if there isn't — rather than always defaulting on.
+  const trialPosition = product && costFallback
+    ? buildProductPricePosition(product, competitors, attributes, priceRules, coreAttributeSelection, variantAttributeSelection, costFallback, false)
+    : null
+  const hasCompetitorData = !!trialPosition && trialPosition.viable.length > 0
+
+  const forcedExplicit = product ? forceStandardMarginMap[product.id] : undefined
+  const forced = forcedExplicit != null ? forcedExplicit : !hasCompetitorData
+  const useCompetitorPricing = !forced
+
+  const position = product && costFallback && forced
+    ? buildProductPricePosition(product, competitors, attributes, priceRules, coreAttributeSelection, variantAttributeSelection, costFallback, true)
+    : trialPosition
+
+  const manualOverride = product ? !!manualRetailPriceMap[product.id] : true
+  const recommendedRetail = position?.recommendedPrice ?? null
+  const retailIsLocked = !manualOverride && recommendedRetail != null
+
+  // Keep Retail Price synced to whichever source is driving it (competitor
+  // analysis or standard margin) so Trade/Bulk/Bulk Trade below — which all
+  // read form.price — stay correct without a second, separate calculation.
+  useEffect(() => {
+    if (retailIsLocked && Number(form.price) !== recommendedRetail) {
+      setForm(f => ({ ...f, price: recommendedRetail }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retailIsLocked, recommendedRetail])
+
+  const goToSpecMatchingVariant = () => navigate(`/attributes?${new URLSearchParams({ view: 'Stage 2 Match Attributes' })}`)
+  const goToPricingFormula = () => navigate(`/competitor-pricing?${new URLSearchParams({ tab: 'Pricing Formula' })}`)
+  const goToAnalysisDetails = () => navigate(`/competitor-pricing?${new URLSearchParams({ tab: 'Overview', product: String(product.id) })}`)
+
+  const mainContent = (
+    <div className="flex flex-col gap-4 flex-1 min-w-0">
       <SectionCard title="Pricing">
         <Field label="Retail Price ($)">
           <Input
@@ -670,18 +821,150 @@ function TabPricing({ form, setForm }) {
             value={form.price}
             onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
             placeholder="0"
-            disabled={form.type === 'custom'}
+            disabled={form.type === 'custom' || retailIsLocked}
           />
         </Field>
+        {product && recommendedRetail != null && (
+          <p className="text-xs text-text-muted -mt-2">
+            {manualOverride ? (
+              <>
+                Manually set — not using {forced ? 'standard margin' : 'competitor pricing'}.{' '}
+                <button type="button" onClick={() => setManualRetailPrice(product.id, false)} className="text-brand-500 hover:text-brand-600 hover:underline font-medium">
+                  Use recommended price (${recommendedRetail.toFixed(2)})
+                </button>
+              </>
+            ) : (
+              <>
+                Set automatically from {forced ? 'standard margin on cost' : 'competitor pricing (Stage 2)'}.{' '}
+                <button type="button" onClick={() => setManualRetailPrice(product.id, true)} className="text-brand-500 hover:text-brand-600 hover:underline font-medium">
+                  Set manually instead
+                </button>
+              </>
+            )}
+          </p>
+        )}
+        {product && recommendedRetail == null && costBreakdown && (
+          <p className="text-xs text-text-muted -mt-2">No comparison analysis available yet — Retail Price is set manually.</p>
+        )}
       </SectionCard>
+
+      <SectionCard title="Competitor Pricing">
+        {isNew || !product ? (
+          <>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-text-primary">Run Competitor Analysis</p>
+                <p className="text-xs text-text-muted mt-0.5">
+                  {draftMissing.length > 0 ? (
+                    <>Fill in {draftMissing.join(', ')} first (General and Attributes tabs) to enable this.</>
+                  ) : (
+                    <>
+                      Runs Stage 1 core match and Stage 2 variant match against the competitors configured on Competitor
+                      Pricing for this product's category, then sets Retail Price from the result — same as the full
+                      analysis a saved product gets, without saving first. Also requires an estimated Retail Price above,
+                      since competitor prices are synthesized relative to it.
+                    </>
+                  )}
+                </p>
+              </div>
+              <Button variant="secondary" size="sm" disabled={!canRunDraftAnalysis} onClick={runDraftCompetitorAnalysis} className="shrink-0">
+                Run Competitor Analysis
+              </Button>
+            </div>
+            {draftPosition && (
+              <div className="pt-3 border-t border-border">
+                <CompetitorMatchAnalysis
+                  product={{ price: parseFloat(form.price) || 0 }}
+                  position={draftPosition}
+                  onEditVariantAttributes={goToSpecMatchingVariant}
+                  onEditStandardMargin={goToPricingFormula}
+                />
+              </div>
+            )}
+          </>
+        ) : !costBreakdown ? (
+          <p className="text-sm text-text-muted">No cost data for this product yet — set it up on the Cost tab first.</p>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-text-primary">Use Competitor Pricing</p>
+                <p className="text-xs text-text-muted mt-0.5">
+                  {(() => {
+                    const isManual = forcedExplicit != null
+                    if (useCompetitorPricing) {
+                      return isManual
+                        ? 'Manually turned on. This will use competitor analysis if valid matches exist, or fall back to the standard margin if not.'
+                        : 'Valid competitor matches were found — on by default. Turn off to price from the standard margin instead.'
+                    }
+                    if (!hasCompetitorData) {
+                      return "No valid competitor matches were found for this product, so this is off and can't be turned on until valid matches exist."
+                    }
+                    return 'Manually turned off — pricing uses the standard margin on cost instead of competitor analysis.'
+                  })()}
+                </p>
+              </div>
+              <Toggle
+                checked={useCompetitorPricing}
+                disabled={!useCompetitorPricing && !hasCompetitorData}
+                onChange={v => setForceStandardMargin(product.id, !v)}
+              />
+            </div>
+
+            {hasCompetitorData && (
+              <div className="flex justify-end -mt-2">
+                <button
+                  onClick={goToAnalysisDetails}
+                  className="inline-flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 hover:underline"
+                >
+                  View full Stage 1 &amp; 2 analysis details <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            {useCompetitorPricing ? (
+              <div className="pt-3 border-t border-border">
+                <CompetitorMatchAnalysis
+                  product={product}
+                  position={position}
+                  cost={costBreakdown.totalCost}
+                  onEditVariantAttributes={goToSpecMatchingVariant}
+                  onEditStandardMargin={goToPricingFormula}
+                />
+              </div>
+            ) : (
+              <div className="bg-warning-500/10 border border-warning-500/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-warning-600">Not using competitor pricing</p>
+                  <p className="text-sm font-semibold text-text-primary mt-0.5">
+                    Standard margin — {recommendedRetail != null ? `$${recommendedRetail.toFixed(2)}` : '—'} at {Math.round(standardMarginPct * 100)}% on cost
+                  </p>
+                </div>
+                <button onClick={goToPricingFormula} className="text-xs text-brand-500 hover:text-brand-600 hover:underline shrink-0">
+                  Edit standard margin
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </SectionCard>
+
+      <div className="flex items-center justify-between gap-3 -mb-1">
+        <p className="text-xs text-text-muted">
+          Trade / Bulk / Bulk Trade discounts default from this product's category and can be overridden here.
+        </p>
+        <Link to={`/competitor-pricing?${new URLSearchParams({ tab: 'Pricing Discounts' })}`} className="inline-flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 hover:underline shrink-0">
+          Manage category defaults &amp; bulk edit <ArrowRight className="w-3 h-3" />
+        </Link>
+      </div>
 
       <SectionCard title="Trade Pricing">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Trade Discount (%)" hint="Applied automatically to trade account customers">
             <Input
               type="number"
-              value={form.tradeDiscount ?? ''}
-              onChange={e => setForm(f => ({ ...f, tradeDiscount: e.target.value }))}
+              value={tradeDiscount}
+              onChange={e => setTradeDiscount(e.target.value === '' ? 0 : Number(e.target.value))}
               placeholder="0"
             />
           </Field>
@@ -689,6 +972,13 @@ function TabPricing({ form, setForm }) {
             <Input value={tradeCalc} disabled placeholder="Auto-calculated" />
           </Field>
         </div>
+        {product && (
+          <DiscountOverrideNote
+            isOverridden={effectiveDiscounts.isOverridden.tradeDiscount}
+            categoryDefault={categoryDefaults.tradeDiscount}
+            onReset={() => clearProductOverride(product.id, 'tradeDiscount')}
+          />
+        )}
       </SectionCard>
 
       <SectionCard title="Bulk Pricing">
@@ -704,8 +994,8 @@ function TabPricing({ form, setForm }) {
           <Field label="Bulk Discount (%)">
             <Input
               type="number"
-              value={form.bulkDiscount ?? ''}
-              onChange={e => setForm(f => ({ ...f, bulkDiscount: e.target.value }))}
+              value={bulkDiscount}
+              onChange={e => setBulkDiscount(e.target.value === '' ? 0 : Number(e.target.value))}
               placeholder="0"
             />
           </Field>
@@ -713,6 +1003,37 @@ function TabPricing({ form, setForm }) {
             <Input value={bulkCalc} disabled placeholder="Auto-calculated" />
           </Field>
         </div>
+        {product && (
+          <DiscountOverrideNote
+            isOverridden={effectiveDiscounts.isOverridden.bulkDiscount}
+            categoryDefault={categoryDefaults.bulkDiscount}
+            onReset={() => clearProductOverride(product.id, 'bulkDiscount')}
+          />
+        )}
+      </SectionCard>
+
+      <SectionCard title="Bulk Trade Pricing">
+        <p className="text-xs text-text-muted -mt-2">Further discount off the Bulk price for trade accounts buying in bulk.</p>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Bulk Trade Discount (%)" hint="Applied on top of the Bulk price">
+            <Input
+              type="number"
+              value={bulkTradeDiscount}
+              onChange={e => setBulkTradeDiscount(e.target.value === '' ? 0 : Number(e.target.value))}
+              placeholder="0"
+            />
+          </Field>
+          <Field label="Bulk Trade Price (calculated)">
+            <Input value={bulkTradeCalc != null ? `$${bulkTradeCalc.toFixed(2)}` : ''} disabled placeholder="Auto-calculated" />
+          </Field>
+        </div>
+        {product && (
+          <DiscountOverrideNote
+            isOverridden={effectiveDiscounts.isOverridden.bulkTradeDiscount}
+            categoryDefault={categoryDefaults.bulkTradeDiscount}
+            onReset={() => clearProductOverride(product.id, 'bulkTradeDiscount')}
+          />
+        )}
       </SectionCard>
 
       <SectionCard title="GST">
@@ -748,6 +1069,168 @@ function TabPricing({ form, setForm }) {
         )}
       </SectionCard>
     </div>
+  )
+
+  return (
+    <div className="flex gap-4 items-start">
+      {mainContent}
+      <div className="w-72 shrink-0 flex flex-col gap-4">
+        <SectionCard title="Pricing Summary">
+          <SummaryRow
+            label="Retail"
+            price={retailPrice > 0 ? retailPrice : null}
+            sub={useCompetitorPricing ? 'Competitor pricing' : `Standard margin ${Math.round(standardMarginPct * 100)}%`}
+            margin={costBreakdown && retailPrice > 0 ? (retailPrice - costBreakdown.totalCost) / retailPrice : null}
+          />
+          <SummaryRow
+            label="Trade"
+            price={tradePriceNum}
+            sub={tradeDiscount ? `${tradeDiscount}% off retail` : null}
+            margin={costBreakdown && tradePriceNum ? (tradePriceNum - costBreakdown.totalCost) / tradePriceNum : null}
+          />
+          <SummaryRow
+            label="Bulk"
+            price={bulkPriceNum}
+            sub={bulkDiscount ? `${bulkDiscount}% off retail` : null}
+            margin={costBreakdown && bulkPriceNum ? (bulkPriceNum - costBreakdown.totalCost) / bulkPriceNum : null}
+          />
+          <SummaryRow
+            label="Bulk Trade"
+            price={bulkTradeCalc}
+            sub={bulkTradeDiscount ? `${bulkTradeDiscount}% off bulk` : null}
+            margin={costBreakdown && bulkTradeCalc ? (bulkTradeCalc - costBreakdown.totalCost) / bulkTradeCalc : null}
+          />
+          <SummaryRow
+            label="MAM"
+            price={mamPriceNum}
+            sub={mamDiscount ? `${mamDiscount}% off retail` : null}
+            margin={costBreakdown && mamPriceNum ? (mamPriceNum - costBreakdown.totalCost) / mamPriceNum : null}
+          />
+        </SectionCard>
+      </div>
+    </div>
+  )
+}
+
+// Reads/writes ProductCostContext directly (not the local form/setForm
+// staging pattern the rest of this page uses) — cost data is shared with
+// Competitor Pricing's Overview, so edits apply immediately rather than
+// waiting on "Save Product".
+function TabCost({ productId, isNew }) {
+  const { costRecords, updateCostRecord } = useProductCost()
+  const [costVariablesOpen, setCostVariablesOpen] = useState(false)
+  const record = !isNew ? costRecords[productId] : null
+
+  if (isNew) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-2 text-text-muted">
+        <p className="font-medium text-text-secondary">Save this product first</p>
+        <p className="text-sm">The cost breakdown is available once the product has been created.</p>
+      </div>
+    )
+  }
+
+  if (!record) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-2 text-text-muted">
+        <p className="font-medium text-text-secondary">No cost data for this product</p>
+        <p className="text-sm">Custom-quote products priced on application don't carry a cost breakdown.</p>
+      </div>
+    )
+  }
+
+  const set = (patch) => updateCostRecord(productId, patch)
+  const num = (v) => { const n = parseFloat(v); return Number.isNaN(n) ? 0 : n }
+  const breakdown = computeCostBreakdown(record)
+
+  return (
+    <>
+    <div className="flex flex-col gap-4">
+      <SectionCard title="Unit & Landed Cost">
+        <div className="grid grid-cols-3 gap-4">
+          <Field label="Unit Cost ($)">
+            <Input type="number" step="0.01" value={record.unitCost} onChange={e => set({ unitCost: num(e.target.value) })} />
+          </Field>
+          <Field label="Freight & Duties ($)">
+            <Input type="number" step="0.01" value={record.freightDuties} onChange={e => set({ freightDuties: num(e.target.value) })} />
+          </Field>
+          <Field label="Landed Cost (calculated)">
+            <Input value={`$${breakdown.unitLanded.landedCost.toFixed(2)}`} disabled />
+          </Field>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Packaging Cost">
+        <div className="flex items-center justify-between gap-3 -mt-2">
+          <p className="text-xs text-text-muted">
+            Packaging Cost below is still a single manual subtotal — it isn't auto-built from selected components yet. The
+            freight, material, and packaging rate card is available to reference while filling this in.
+          </p>
+          <button
+            type="button"
+            onClick={() => setCostVariablesOpen(true)}
+            className="inline-flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 hover:underline shrink-0"
+          >
+            View Cost Variables <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Packing Method">
+            <Select value={record.packingMethod} onChange={e => set({ packingMethod: e.target.value })}>
+              {PACKING_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+            </Select>
+          </Field>
+          <Field label="Packaging Cost ($)">
+            <Input type="number" step="0.01" value={record.packagingCost} onChange={e => set({ packagingCost: num(e.target.value) })} />
+          </Field>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Labour & Manufacturing Cost">
+        <div className="grid grid-cols-3 gap-4">
+          <Field label="Assembly Labour Hours" hint={`@ $${LABOUR_RATES.assembly}/hr = $${breakdown.labour.assemblyLabourCost.toFixed(2)}`}>
+            <Input type="number" step="0.01" value={record.assemblyHours} onChange={e => set({ assemblyHours: num(e.target.value) })} />
+          </Field>
+          <Field label="Packing Labour Hours" hint={`@ $${LABOUR_RATES.packing}/hr = $${breakdown.labour.packingLabourCost.toFixed(2)}`}>
+            <Input type="number" step="0.01" value={record.packingHours} onChange={e => set({ packingHours: num(e.target.value) })} />
+          </Field>
+          <Field label="Manufacturing Labour Hours" hint={`@ $${LABOUR_RATES.manufacturing}/hr = $${breakdown.labour.manufacturingLabourCost.toFixed(2)}`}>
+            <Input type="number" step="0.01" value={record.manufacturingHours} onChange={e => set({ manufacturingHours: num(e.target.value) })} />
+          </Field>
+        </div>
+        <Field label="Manufacturing Cosmetic Cost ($)" hint="Finishing, paint, or other cosmetic treatment cost">
+          <Input type="number" step="0.01" value={record.manufacturingCosmeticCost} onChange={e => set({ manufacturingCosmeticCost: num(e.target.value) })} className="w-48" />
+        </Field>
+        <div className="flex items-center justify-between pt-3 border-t border-border">
+          <span className="text-sm font-medium text-text-primary">Total Labour & Manufacturing Cost</span>
+          <span className="text-sm font-semibold text-text-primary">${breakdown.labour.labourCost.toFixed(2)}</span>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Operational Cost">
+        <div className="grid grid-cols-3 gap-4">
+          <Field label="Fixed Cost ($)">
+            <Input type="number" step="0.01" value={record.fixedCost} onChange={e => set({ fixedCost: num(e.target.value) })} />
+          </Field>
+          <Field label="Handling Cost ($)">
+            <Input type="number" step="0.01" value={record.handlingCost} onChange={e => set({ handlingCost: num(e.target.value) })} />
+          </Field>
+          <Field label="Extras Cost ($)">
+            <Input type="number" step="0.01" value={record.extrasCost} onChange={e => set({ extrasCost: num(e.target.value) })} />
+          </Field>
+        </div>
+      </SectionCard>
+
+      <div className="bg-brand-50 border border-brand-100 rounded-xl px-5 py-4 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-brand-700">Total Cost</p>
+          <p className="text-xs text-brand-600 mt-0.5">Landed + Packaging + Labour + Operational — flows into Product Pricing's margins automatically.</p>
+        </div>
+        <span className="text-xl font-semibold text-text-primary">${breakdown.totalCost.toFixed(2)}</span>
+      </div>
+    </div>
+    <CostVariablesModal open={costVariablesOpen} onClose={() => setCostVariablesOpen(false)} />
+    </>
   )
 }
 
@@ -999,15 +1482,74 @@ function TabVariations({ form, setForm }) {
   )
 }
 
-const AVAILABLE_ATTRIBUTES = [
-  { id: 1, name: 'Material', values: ['Aluminium', 'Stainless Steel', 'Chrome', 'Nylon', 'Timber'] },
-  { id: 2, name: 'Colour', values: ['Silver', 'White', 'Black', 'Chrome'] },
-  { id: 3, name: 'Weight Capacity', values: ['100kg', '120kg', '150kg', '200kg'] },
-  { id: 4, name: 'Length', values: ['300mm', '450mm', '600mm', '750mm', '900mm'] },
-  { id: 5, name: 'Compliance', values: ['AS 1428.1', 'AS 4586', 'NDIS Approved'] },
-]
+// One attribute's value chips, plus an inline "add a new value" control.
+// New values are written straight to the shared AttributesContext (via
+// `addValue`), so they show up on the standalone Attributes page too — not
+// just staged locally on this product — and the newly-added value is
+// selected for this product immediately since that's the obvious reason to
+// add it from here rather than from Attributes directly.
+function AttributeValueRow({ attr, selected, onToggle, addValue }) {
+  const [newVal, setNewVal] = useState('')
 
-function AttributeSelector({ selected = {}, onChange }) {
+  const handleAdd = () => {
+    const v = newVal.trim()
+    if (!v || attr.values.includes(v)) return
+    addValue(attr.id, v)
+    onToggle(v)
+    setNewVal('')
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-medium text-text-primary mb-2">{attr.name}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {attr.values.length === 0 && <p className="text-xs text-text-muted italic">No values defined for this attribute yet.</p>}
+        {attr.values.map(val => {
+          const isSelected = selected.includes(val)
+          return (
+            <button
+              key={val}
+              type="button"
+              onClick={() => onToggle(val)}
+              className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                isSelected
+                  ? 'bg-brand-50 border-brand-500 text-brand-600 font-medium'
+                  : 'bg-white border-border text-text-secondary hover:border-brand-300'
+              }`}
+            >
+              {val}{attr.type === 'numeric' && attr.unit ? attr.unit : ''}
+            </button>
+          )
+        })}
+        <div className="flex items-center gap-1">
+          <input
+            value={newVal}
+            onChange={e => setNewVal(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAdd())}
+            placeholder={attr.type === 'numeric' ? 'Add numeric value…' : 'Add value…'}
+            className="h-8 w-36 px-2.5 rounded-full border border-dashed border-border bg-surface text-xs text-text-primary placeholder:text-text-muted outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!newVal.trim()}
+            className="w-8 h-8 rounded-full border border-dashed border-border text-text-muted hover:border-brand-500 hover:text-brand-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0"
+            title={`Add a new value to "${attr.name}"`}
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// `attributes` is the category-scoped pool (from the shared Attributes CMS,
+// filtered to whatever's assigned to this product's category on Category
+// Assignments) — not a static list, so adding/renaming/reassigning an
+// attribute anywhere in the CMS shows up here immediately, and new values or
+// new attributes added from here are written back to that same shared list.
+function AttributeSelector({ attributes, selected = {}, onChange, addValue, onAddAttribute }) {
   const toggle = (attrName, value) => {
     const current = selected[attrName] ?? []
     const updated = current.includes(value)
@@ -1018,36 +1560,45 @@ function AttributeSelector({ selected = {}, onChange }) {
 
   return (
     <div className="flex flex-col gap-5">
-      {AVAILABLE_ATTRIBUTES.map(attr => (
-        <div key={attr.id}>
-          <p className="text-sm font-medium text-text-primary mb-2">{attr.name}</p>
-          <div className="flex flex-wrap gap-2">
-            {attr.values.map(val => {
-              const isSelected = (selected[attr.name] ?? []).includes(val)
-              return (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => toggle(attr.name, val)}
-                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                    isSelected
-                      ? 'bg-brand-50 border-brand-500 text-brand-600 font-medium'
-                      : 'bg-white border-border text-text-secondary hover:border-brand-300'
-                  }`}
-                >
-                  {val}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+      {attributes.length === 0 && (
+        <p className="text-sm text-text-muted">No attributes are assigned to this product's category yet — add one below.</p>
+      )}
+      {attributes.map(attr => (
+        <AttributeValueRow
+          key={attr.id}
+          attr={attr}
+          selected={selected[attr.name] ?? []}
+          onToggle={val => toggle(attr.name, val)}
+          addValue={addValue}
+        />
       ))}
+      <div>
+        <Button variant="secondary" size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={onAddAttribute}>
+          Add Attribute
+        </Button>
+      </div>
     </div>
   )
 }
 
 function TabAttributes({ form, setForm }) {
   const isVariable = form.type === 'variable'
+  const { attributes, addAttribute, addValue } = useAttributes()
+  const categoryAttributes = form.category ? categoryAttributePool(attributes, form.category) : []
+
+  const [newAttrOpen, setNewAttrOpen] = useState(false)
+  const [newAttrEditing, setNewAttrEditing] = useState(null)
+
+  const openNewAttribute = () => {
+    setNewAttrEditing({ id: null, name: '', type: 'categorical', unit: '', categories: form.category ? [form.category] : [], values: [] })
+    setNewAttrOpen(true)
+  }
+  const saveNewAttribute = () => {
+    if (!newAttrEditing.name.trim()) return
+    addAttribute(newAttrEditing)
+    toast(`Attribute "${newAttrEditing.name}" added${form.category ? ` to ${form.category}` : ''}`, 'success')
+    setNewAttrOpen(false)
+  }
 
   const combos = (form.variationTypes || [])
     .filter(vt => vt.name && vt.options.length > 0)
@@ -1059,6 +1610,15 @@ function TabAttributes({ form, setForm }) {
   const comboKey = (combo) => combo.map(c => c.value).join('__')
 
   const [openIdx, setOpenIdx] = useState(null)
+
+  if (!form.category) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-2 text-text-muted">
+        <p className="font-medium text-text-secondary">No category selected</p>
+        <p className="text-sm">Set this product's category on the General tab to see its assigned attributes.</p>
+      </div>
+    )
+  }
 
   if (isVariable && combos.length === 0) {
     return (
@@ -1099,6 +1659,7 @@ function TabAttributes({ form, setForm }) {
                   {isOpen && (
                     <div className="px-4 py-4 bg-grey-50 border-t border-border">
                       <AttributeSelector
+                        attributes={categoryAttributes}
                         selected={varAttrs}
                         onChange={attrs => setForm(f => ({
                           ...f,
@@ -1107,6 +1668,8 @@ function TabAttributes({ form, setForm }) {
                             [key]: { ...((f.variationData ?? {})[key] ?? {}), attributes: attrs }
                           }
                         }))}
+                        addValue={addValue}
+                        onAddAttribute={openNewAttribute}
                       />
                     </div>
                   )}
@@ -1115,6 +1678,15 @@ function TabAttributes({ form, setForm }) {
             })}
           </div>
         </SectionCard>
+
+        <AttributeEditorDrawer
+          open={newAttrOpen}
+          onClose={() => setNewAttrOpen(false)}
+          editing={newAttrEditing}
+          setEditing={setNewAttrEditing}
+          onSave={saveNewAttribute}
+          title="New Attribute"
+        />
       </div>
     )
   }
@@ -1122,12 +1694,27 @@ function TabAttributes({ form, setForm }) {
   return (
     <div className="flex flex-col gap-4">
       <SectionCard title="Attributes">
-        <p className="text-xs text-text-muted -mt-2">Select the attribute values that apply to this product.</p>
+        <p className="text-xs text-text-muted -mt-2">
+          Select the attribute values that apply to this product — scoped to attributes assigned to{' '}
+          <strong>{form.category}</strong> on the Attributes page's Category Assignments view.
+        </p>
         <AttributeSelector
+          attributes={categoryAttributes}
           selected={form.attributes ?? {}}
           onChange={attrs => setForm(f => ({ ...f, attributes: attrs }))}
+          addValue={addValue}
+          onAddAttribute={openNewAttribute}
         />
       </SectionCard>
+
+      <AttributeEditorDrawer
+        open={newAttrOpen}
+        onClose={() => setNewAttrOpen(false)}
+        editing={newAttrEditing}
+        setEditing={setNewAttrEditing}
+        onSave={saveNewAttribute}
+        title="New Attribute"
+      />
     </div>
   )
 }
@@ -1166,10 +1753,11 @@ function TabSEO({ form, setForm }) {
 export function ProductForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const isNew = !id || id === 'new'
   const existing = !isNew ? mockProducts.find(p => p.id === Number(id)) : null
 
-  const [activeTab, setActiveTab] = useState('General')
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'General')
   const [form, setForm] = useState(existing ? {
     ...existing,
     gallery: [], installs: [], resources: [],
@@ -1194,7 +1782,8 @@ export function ProductForm() {
     General: <TabGeneral form={form} setForm={setForm} />,
     'Completed Installs': <TabCompletedInstalls form={form} setForm={setForm} />,
     Categories: <TabCategories form={form} setForm={setForm} />,
-    Pricing: <TabPricing form={form} setForm={setForm} />,
+    Pricing: <TabPricing form={form} setForm={setForm} product={existing} isNew={isNew} />,
+    Cost: <TabCost productId={existing?.id} isNew={isNew} />,
     Inventory: <TabInventory form={form} setForm={setForm} />,
     Specifications: <TabSpecs form={form} setForm={setForm} />,
     FAQs: <TabSpecs form={form} setForm={setForm} />,

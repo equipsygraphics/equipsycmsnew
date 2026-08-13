@@ -41,6 +41,7 @@ import { Newsletter } from './pages/marketing/Newsletter'
 import { SalesAnalytics } from './pages/analytics/SalesAnalytics'
 import { WebPerformance } from './pages/analytics/WebPerformance'
 import { SEO } from './pages/analytics/SEO'
+import { CompetitorPricing } from './pages/competitor-pricing/CompetitorPricing'
 import { Settings } from './pages/settings/Settings'
 import { Accounts } from './pages/settings/Accounts'
 import { AdminSettings } from './pages/settings/AdminSettings'
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
       { path: '/orders/:id', element: <OrderDetail /> },
       { path: '/customers', element: <CustomersList /> },
       { path: '/customers/:id', element: <CustomerDetail /> },
+      { path: '/competitor-pricing', element: <CompetitorPricing /> },
       { path: '/feedback', element: <FeedbackList /> },
       { path: '/feedback/:id', element: <FeedbackDetail /> },
       { path: '/ot-feedback', element: <OTFeedbackList /> },

@@ -75,7 +75,7 @@ export function DataTable({
       {/* Table */}
       <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-card">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-max text-sm">
             <thead>
               <tr className="border-b border-border bg-grey-50">
                 {columns.map(col => (
@@ -107,7 +107,7 @@ export function DataTable({
                   className={`border-b border-border last:border-0 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-grey-50' : ''}`}
                 >
                   {columns.map(col => (
-                    <td key={col.key} className={`px-4 py-3 text-text-primary ${col.align === 'right' ? 'text-right' : ''}`}>
+                    <td key={col.key} className={`px-4 py-3 text-text-primary whitespace-nowrap ${col.align === 'right' ? 'text-right' : ''}`}>
                       {col.render ? col.render(row[col.key], row) : row[col.key]}
                     </td>
                   ))}
