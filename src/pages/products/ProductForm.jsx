@@ -149,6 +149,15 @@ const FILE_ICON_MAP = {
   'application/zip': '🗜️',
 }
 
+// Transparent-checkerboard backdrop shared by the product gallery and each
+// variant's own gallery, so images with transparency are legible in either.
+const GALLERY_CHECKER_STYLE = {
+  backgroundImage: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
+  backgroundSize: '12px 12px',
+  backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0px',
+  backgroundColor: '#f9fafb',
+}
+
 function ProductGalleryCard({ form, setForm }) {
   const gallery = form.gallery ?? []
   const primaryId = form.galleryPrimaryId ?? gallery[0]?.id ?? null
@@ -182,13 +191,6 @@ function ProductGalleryCard({ form, setForm }) {
     setForm(f => ({ ...f, galleryPrimaryId: id }))
   }
 
-  const checkerStyle = {
-    backgroundImage: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
-    backgroundSize: '12px 12px',
-    backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0px',
-    backgroundColor: '#f9fafb',
-  }
-
   return (
     <SectionCard title="Product Gallery">
       <div className="flex flex-wrap gap-3">
@@ -199,7 +201,7 @@ function ProductGalleryCard({ form, setForm }) {
               <button
                 type="button"
                 className={`w-32 h-32 rounded-xl border-2 overflow-hidden transition-colors cursor-pointer block ${isPrimary ? 'border-brand-500' : 'border-border hover:border-brand-300'}`}
-                style={checkerStyle}
+                style={GALLERY_CHECKER_STYLE}
                 onClick={() => setPrimary(item.id)}
               >
                 {item.url && <img src={item.url} alt={item.title} className="w-full h-full object-cover" />}
@@ -1382,8 +1384,82 @@ function OptionValuesInput({ values, onAdd, onRemove }) {
   )
 }
 
+// A variant's own image gallery — same shape and MediaLibraryModal flow as
+// the product-level Product Gallery, just scoped to this one variant's
+// `data.gallery`/`data.galleryPrimaryId` instead of the whole product's.
+// `multiple` is on so several shots can be picked from the library in one
+// go rather than reopening the picker per image.
+function VariantGallery({ data, setVariationData }) {
+  const gallery = data.gallery ?? []
+  const primaryId = data.galleryPrimaryId ?? gallery[0]?.id ?? null
+  const [modalOpen, setModalOpen] = useState(false)
+
+  const handleSelect = (items) => {
+    const newItems = items.map(item => ({
+      id: Date.now() + Math.random(),
+      title: item.title || item.name.replace(/\.[^/.]+$/, ''),
+      name: item.name,
+      size: item.size,
+      type: item.type,
+      ext: item.ext,
+      url: item.url,
+    }))
+    const updated = [...gallery, ...newItems]
+    setVariationData({ gallery: updated, galleryPrimaryId: data.galleryPrimaryId ?? updated[0]?.id })
+  }
+
+  const remove = (id) => {
+    const updated = gallery.filter(r => r.id !== id)
+    const newPrimary = primaryId === id ? (updated[0]?.id ?? null) : primaryId
+    setVariationData({ gallery: updated, galleryPrimaryId: newPrimary })
+  }
+
+  const setPrimary = (id) => setVariationData({ galleryPrimaryId: id })
+
+  return (
+    <div className="flex flex-wrap gap-3">
+      {gallery.map(item => {
+        const isPrimary = item.id === primaryId
+        return (
+          <div key={item.id} className="relative group">
+            <button
+              type="button"
+              className={`w-20 h-20 rounded-lg border-2 overflow-hidden transition-colors cursor-pointer block ${isPrimary ? 'border-brand-500' : 'border-border hover:border-brand-300'}`}
+              style={GALLERY_CHECKER_STYLE}
+              onClick={() => setPrimary(item.id)}
+            >
+              {item.url && <img src={item.url} alt={item.title} className="w-full h-full object-cover" />}
+            </button>
+            {isPrimary ? (
+              <span className="absolute top-1 left-1 bg-brand-500 text-white text-[9px] font-semibold px-1 py-0.5 rounded pointer-events-none">Primary</span>
+            ) : (
+              <span className="absolute top-1 left-1 bg-black/50 text-white text-[9px] font-medium px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Set primary</span>
+            )}
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); remove(item.id) }}
+              className="absolute top-0.5 right-0.5 p-0.5 rounded-md bg-white/90 text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        )
+      })}
+      <button
+        type="button"
+        onClick={() => setModalOpen(true)}
+        className="w-20 h-20 border-2 border-dashed border-border hover:border-brand-300 hover:bg-grey-50 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+      >
+        <Upload className="w-4 h-4 text-text-muted" />
+        <p className="text-[10px] font-medium text-brand-500">Add</p>
+      </button>
+      <MediaLibraryModal open={modalOpen} onClose={() => setModalOpen(false)} onSelect={handleSelect} multiple />
+    </div>
+  )
+}
+
 // The generated variant matrix — one row per combination of option values.
-// Each row expands into its own Pricing / Inventory / Shipping /
+// Each row expands into its own Images / Pricing / Inventory / Shipping /
 // Specifications panel, so a variant behaves like its own mini product
 // rather than just a SKU/price pair. Deliberately no hard delete: switching
 // "Active" off keeps the variant's data intact (in case its option
@@ -1405,7 +1481,8 @@ function VariationCombinations({ form, setForm, combos }) {
       </p>
 
       <div className="border border-border rounded-xl overflow-hidden">
-        <div className="hidden md:grid grid-cols-[auto_1fr_100px_80px_130px_60px] gap-3 px-4 py-2.5 bg-grey-50 border-b border-border text-xs font-semibold text-text-muted uppercase tracking-wide">
+        <div className="hidden md:grid grid-cols-[auto_36px_1fr_100px_80px_130px_60px] gap-3 px-4 py-2.5 bg-grey-50 border-b border-border text-xs font-semibold text-text-muted uppercase tracking-wide">
+          <span></span>
           <span></span>
           <span>Variant</span>
           <span>Price</span>
@@ -1420,6 +1497,7 @@ function VariationCombinations({ form, setForm, combos }) {
             const isOpen = openKey === key
             const label = combo.map(c => c.value).join(' / ')
             const isEnabled = data.enabled !== false
+            const thumb = (data.gallery ?? []).find(g => g.id === (data.galleryPrimaryId ?? data.gallery?.[0]?.id))
             return (
               <div key={key} className={isEnabled ? '' : 'opacity-60'}>
                 <div
@@ -1427,9 +1505,12 @@ function VariationCombinations({ form, setForm, combos }) {
                   tabIndex={0}
                   onClick={() => setOpenKey(isOpen ? null : key)}
                   onKeyDown={e => { if (e.key === 'Enter') setOpenKey(isOpen ? null : key) }}
-                  className="w-full grid grid-cols-2 md:grid-cols-[auto_1fr_100px_80px_130px_60px] gap-x-3 gap-y-1 items-center px-4 py-3 bg-surface hover:bg-grey-50 transition-colors text-left cursor-pointer"
+                  className="w-full grid grid-cols-2 md:grid-cols-[auto_36px_1fr_100px_80px_130px_60px] gap-x-3 gap-y-1 items-center px-4 py-3 bg-surface hover:bg-grey-50 transition-colors text-left cursor-pointer"
                 >
                   <svg className={`w-4 h-4 text-text-muted transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 6 6 6-6 6"/></svg>
+                  <span className="hidden md:block w-9 h-9 rounded-md border border-border overflow-hidden shrink-0" style={GALLERY_CHECKER_STYLE}>
+                    {thumb?.url && <img src={thumb.url} alt="" className="w-full h-full object-cover" />}
+                  </span>
                   <span className="text-sm font-medium text-text-primary truncate col-span-2 md:col-span-1">{label}</span>
                   <span className="text-sm text-text-secondary">{data.price ? `$${data.price}` : '—'}</span>
                   <span className="text-sm text-text-secondary">{data.stock ?? '—'}</span>
@@ -1452,6 +1533,11 @@ function VariationCombinations({ form, setForm, combos }) {
                       {combo.map(c => (
                         <span key={c.type} className="text-xs text-text-muted bg-grey-100 px-2 py-0.5 rounded">{c.type}: {c.value}</span>
                       ))}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary mb-3">Images</p>
+                      <VariantGallery data={data} setVariationData={patch => setVariationData(key, patch)} />
                     </div>
 
                     <div>
