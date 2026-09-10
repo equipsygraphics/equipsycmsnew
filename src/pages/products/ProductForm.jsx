@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Plus, Trash2, GripVertical, Upload } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Plus, Trash2, GripVertical, Upload, X } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Field, Input, Textarea, Select, Toggle } from '../../components/ui/FormField'
 import { MediaPicker } from '../../components/ui/MediaPicker'
@@ -1317,17 +1317,79 @@ function TabSpecs({ form, setForm }) {
   )
 }
 
-function VariationCombinations({ form, setForm }) {
-  const [openIdx, setOpenIdx] = useState(null)
-
-  const combos = (form.variationTypes || [])
+// Cartesian product of every option's values — one entry per resulting
+// variant, e.g. [{type:'Colour',value:'Red'},{type:'Size',value:'Small'}].
+// Shared between the Variants list (builds each variant's price/inventory/
+// shipping/specs panel) and the Attributes tab (assigns spec-matching
+// attribute values per variant) so both stay in sync with whatever Options
+// are currently defined, instead of each recomputing it independently.
+function computeVariantCombos(variationTypes) {
+  return (variationTypes || [])
     .filter(vt => vt.name && vt.options.length > 0)
     .reduce((acc, vt) => {
       if (acc.length === 0) return vt.options.filter(Boolean).map(o => [{ type: vt.name, value: o }])
       return acc.flatMap(c => vt.options.filter(Boolean).map(o => [...c, { type: vt.name, value: o }]))
     }, [])
+}
+const variantComboKey = (combo) => combo.map(c => c.value).join('__')
 
-  const comboKey = (combo) => combo.map(c => c.value).join('__')
+const MAX_VARIATION_TYPES = 3
+
+// Specs that make sense per-variant (e.g. Colour can differ per SKU).
+// Packaging dimensions/weight are deliberately excluded here — at the
+// variant level those live in the structured Shipping section below instead
+// of a free-text spec field.
+const VARIANT_SPEC_FIELDS = [
+  { key: 'material', label: 'Material' },
+  { key: 'finish', label: 'Finish' },
+  { key: 'colour', label: 'Colour' },
+]
+
+// Shopify-style tag input for an option's values — type a value and press
+// Enter/comma to add it as a chip, click the × to remove one, or Backspace
+// on an empty field to pop the last chip.
+function OptionValuesInput({ values, onAdd, onRemove }) {
+  const [draft, setDraft] = useState('')
+
+  const commit = () => {
+    const v = draft.trim()
+    if (v && !values.includes(v)) onAdd(v)
+    setDraft('')
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {values.map((v, i) => (
+        <span key={i} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-brand-50 border border-brand-200 text-sm text-brand-700 font-medium">
+          {v}
+          <button type="button" onClick={() => onRemove(i)} className="w-4 h-4 rounded-full hover:bg-brand-100 flex items-center justify-center text-brand-500">
+            <X className="w-3 h-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit() }
+          else if (e.key === 'Backspace' && draft === '' && values.length > 0) onRemove(values.length - 1)
+        }}
+        onBlur={commit}
+        placeholder="Add a value and press Enter"
+        className="h-8 min-w-[10rem] px-2.5 rounded-full border border-dashed border-border bg-surface text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+      />
+    </div>
+  )
+}
+
+// The generated variant matrix — one row per combination of option values.
+// Each row expands into its own Pricing / Inventory / Shipping /
+// Specifications panel, so a variant behaves like its own mini product
+// rather than just a SKU/price pair. Deliberately no hard delete: switching
+// "Active" off keeps the variant's data intact (in case its option
+// combination comes back) while excluding it from the storefront.
+function VariationCombinations({ form, setForm, combos }) {
+  const [openKey, setOpenKey] = useState(null)
 
   const getVariationData = (key) => (form.variationData ?? {})[key] ?? {}
   const setVariationData = (key, patch) => setForm(f => ({
@@ -1336,85 +1398,157 @@ function VariationCombinations({ form, setForm }) {
   }))
 
   return (
-    <SectionCard title="Variations">
-      <p className="text-xs text-text-muted -mt-2">Set SKU, price, stock and specifications for each variation.</p>
-      <div className="flex flex-col divide-y divide-border border border-border rounded-xl overflow-hidden">
-        {combos.map((combo, ci) => {
-          const key = comboKey(combo)
-          const data = getVariationData(key)
-          const isOpen = openIdx === ci
-          const label = combo.map(c => c.value).join(' / ')
-          return (
-            <div key={key}>
-              <button
-                type="button"
-                onClick={() => setOpenIdx(isOpen ? null : ci)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-surface hover:bg-grey-50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-text-primary">{label}</span>
-                  {combo.map(c => (
-                    <span key={c.type} className="text-xs text-text-muted bg-grey-100 px-2 py-0.5 rounded">{c.type}</span>
-                  ))}
+    <SectionCard title="Variants">
+      <p className="text-xs text-text-muted -mt-2">
+        {combos.length} variant{combos.length === 1 ? '' : 's'} generated from your options above. Each one acts like its
+        own product — set its price, inventory, shipping and specs, or switch it off without losing its data.
+      </p>
+
+      <div className="border border-border rounded-xl overflow-hidden">
+        <div className="hidden md:grid grid-cols-[auto_1fr_100px_80px_130px_60px] gap-3 px-4 py-2.5 bg-grey-50 border-b border-border text-xs font-semibold text-text-muted uppercase tracking-wide">
+          <span></span>
+          <span>Variant</span>
+          <span>Price</span>
+          <span>Stock</span>
+          <span>SKU</span>
+          <span>Active</span>
+        </div>
+        <div className="flex flex-col divide-y divide-border">
+          {combos.map(combo => {
+            const key = variantComboKey(combo)
+            const data = getVariationData(key)
+            const isOpen = openKey === key
+            const label = combo.map(c => c.value).join(' / ')
+            const isEnabled = data.enabled !== false
+            return (
+              <div key={key} className={isEnabled ? '' : 'opacity-60'}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setOpenKey(isOpen ? null : key)}
+                  onKeyDown={e => { if (e.key === 'Enter') setOpenKey(isOpen ? null : key) }}
+                  className="w-full grid grid-cols-2 md:grid-cols-[auto_1fr_100px_80px_130px_60px] gap-x-3 gap-y-1 items-center px-4 py-3 bg-surface hover:bg-grey-50 transition-colors text-left cursor-pointer"
+                >
+                  <svg className={`w-4 h-4 text-text-muted transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 6 6 6-6 6"/></svg>
+                  <span className="text-sm font-medium text-text-primary truncate col-span-2 md:col-span-1">{label}</span>
+                  <span className="text-sm text-text-secondary">{data.price ? `$${data.price}` : '—'}</span>
+                  <span className="text-sm text-text-secondary">{data.stock ?? '—'}</span>
+                  <span className="text-sm text-text-secondary truncate">{data.sku || '—'}</span>
+                  <span
+                    onClick={e => { e.stopPropagation(); setVariationData(key, { enabled: !isEnabled }) }}
+                    role="button"
+                    tabIndex={0}
+                    title={isEnabled ? 'Switch this variant off' : 'Switch this variant on'}
+                    className="justify-self-start"
+                  >
+                    <span className={`inline-flex w-9 h-5 rounded-full transition-colors ${isEnabled ? 'bg-brand-500' : 'bg-grey-200'}`}>
+                      <span className={`w-4 h-4 mt-0.5 rounded-full bg-white shadow-xs transition-transform ${isEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </span>
+                  </span>
                 </div>
-                <svg className={`w-4 h-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
-              </button>
-              {isOpen && (
-                <div className="px-4 py-4 bg-grey-50 border-t border-border flex flex-col gap-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <Field label="SKU">
-                      <Input value={data.sku ?? ''} onChange={e => setVariationData(key, { sku: e.target.value })} placeholder="e.g. PROD-RED-LG" />
-                    </Field>
-                    <Field label="Retail Price ($)">
-                      <Input type="number" value={data.price ?? ''} onChange={e => setVariationData(key, { price: e.target.value })} placeholder="0" />
-                    </Field>
-                    <Field label="Stock">
-                      <Input type="number" value={data.stock ?? ''} onChange={e => setVariationData(key, { stock: e.target.value })} placeholder="0" />
-                    </Field>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-text-primary mb-3">Specifications</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      {SPEC_FIELDS.map(({ key: sk, label, placeholder }) => (
-                        <Field key={sk} label={label}>
-                          <Input
-                            value={data.specs?.[sk] ?? ''}
-                            onChange={e => setVariationData(key, { specs: { ...(data.specs ?? {}), [sk]: e.target.value } })}
-                            placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}
-                          />
+                {isOpen && (
+                  <div className="px-4 py-5 bg-grey-50 border-t border-border flex flex-col gap-5">
+                    <div className="flex flex-wrap gap-1.5">
+                      {combo.map(c => (
+                        <span key={c.type} className="text-xs text-text-muted bg-grey-100 px-2 py-0.5 rounded">{c.type}: {c.value}</span>
+                      ))}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary mb-3">Pricing</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="Retail Price ($)">
+                          <Input type="number" value={data.price ?? ''} onChange={e => setVariationData(key, { price: e.target.value })} placeholder="0" />
                         </Field>
-                      ))}
-                      {(data.customSpecs ?? []).map((spec, si) => (
-                        <div key={si} className="flex gap-2">
-                          <Input value={spec.label} onChange={e => {
-                            const updated = [...(data.customSpecs ?? [])]
-                            updated[si] = { ...updated[si], label: e.target.value }
-                            setVariationData(key, { customSpecs: updated })
-                          }} placeholder="Field name" className="w-32 shrink-0" />
-                          <Input value={spec.value} onChange={e => {
-                            const updated = [...(data.customSpecs ?? [])]
-                            updated[si] = { ...updated[si], value: e.target.value }
-                            setVariationData(key, { customSpecs: updated })
-                          }} placeholder="Value" />
-                          <button type="button" onClick={() => setVariationData(key, { customSpecs: (data.customSpecs ?? []).filter((_, j) => j !== si) })} className="p-2 text-text-muted hover:text-red-500 shrink-0">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setVariationData(key, { customSpecs: [...(data.customSpecs ?? []), { label: '', value: '' }] })}
-                        className="col-span-2 flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 font-medium w-fit"
-                      >
-                        <Plus className="w-4 h-4" /> Add custom field
-                      </button>
+                        <Field label="Trade Price ($)" hint="Optional — overrides the standard trade discount for this variant">
+                          <Input type="number" value={data.tradePrice ?? ''} onChange={e => setVariationData(key, { tradePrice: e.target.value })} placeholder="0" />
+                        </Field>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary mb-3">Inventory</p>
+                      <div className="grid grid-cols-3 gap-4 mb-3">
+                        <Field label="SKU">
+                          <Input value={data.sku ?? ''} onChange={e => setVariationData(key, { sku: e.target.value })} placeholder="e.g. PROD-RED-LG" />
+                        </Field>
+                        <Field label="Barcode" hint="ISBN, UPC, GTIN, etc.">
+                          <Input value={data.barcode ?? ''} onChange={e => setVariationData(key, { barcode: e.target.value })} placeholder="Optional" />
+                        </Field>
+                        <Field label="Stock">
+                          <Input type="number" value={data.stock ?? ''} onChange={e => setVariationData(key, { stock: e.target.value })} placeholder="0" />
+                        </Field>
+                      </div>
+                      <Toggle
+                        checked={data.allowBackorders ?? false}
+                        onChange={v => setVariationData(key, { allowBackorders: v })}
+                        label="Allow backorders"
+                        description="Customers can still purchase this variant when it's out of stock."
+                      />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary mb-3">Shipping</p>
+                      <div className="grid grid-cols-4 gap-4">
+                        <Field label="Weight (kg)">
+                          <Input type="number" value={data.weight ?? ''} onChange={e => setVariationData(key, { weight: e.target.value })} placeholder="0.0" />
+                        </Field>
+                        <Field label="Length (cm)">
+                          <Input type="number" value={data.dimensions?.l ?? ''} onChange={e => setVariationData(key, { dimensions: { ...(data.dimensions ?? {}), l: e.target.value } })} placeholder="0" />
+                        </Field>
+                        <Field label="Width (cm)">
+                          <Input type="number" value={data.dimensions?.w ?? ''} onChange={e => setVariationData(key, { dimensions: { ...(data.dimensions ?? {}), w: e.target.value } })} placeholder="0" />
+                        </Field>
+                        <Field label="Height (cm)">
+                          <Input type="number" value={data.dimensions?.h ?? ''} onChange={e => setVariationData(key, { dimensions: { ...(data.dimensions ?? {}), h: e.target.value } })} placeholder="0" />
+                        </Field>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary mb-3">Specifications</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        {VARIANT_SPEC_FIELDS.map(({ key: sk, label }) => (
+                          <Field key={sk} label={label}>
+                            <Input
+                              value={data.specs?.[sk] ?? ''}
+                              onChange={e => setVariationData(key, { specs: { ...(data.specs ?? {}), [sk]: e.target.value } })}
+                              placeholder={`Enter ${label.toLowerCase()}`}
+                            />
+                          </Field>
+                        ))}
+                        {(data.customSpecs ?? []).map((spec, si) => (
+                          <div key={si} className="flex gap-2">
+                            <Input value={spec.label} onChange={e => {
+                              const updated = [...(data.customSpecs ?? [])]
+                              updated[si] = { ...updated[si], label: e.target.value }
+                              setVariationData(key, { customSpecs: updated })
+                            }} placeholder="Field name" className="w-32 shrink-0" />
+                            <Input value={spec.value} onChange={e => {
+                              const updated = [...(data.customSpecs ?? [])]
+                              updated[si] = { ...updated[si], value: e.target.value }
+                              setVariationData(key, { customSpecs: updated })
+                            }} placeholder="Value" />
+                            <button type="button" onClick={() => setVariationData(key, { customSpecs: (data.customSpecs ?? []).filter((_, j) => j !== si) })} className="p-2 text-text-muted hover:text-red-500 shrink-0">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setVariationData(key, { customSpecs: [...(data.customSpecs ?? []), { label: '', value: '' }] })}
+                          className="col-span-2 flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 font-medium w-fit"
+                        >
+                          <Plus className="w-4 h-4" /> Add custom field
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </SectionCard>
   )
@@ -1430,54 +1564,62 @@ function TabVariations({ form, setForm }) {
     )
   }
 
+  const variationTypes = form.variationTypes || []
+  const combos = computeVariantCombos(variationTypes)
+
   const addVariationType = () => setForm(f => ({ ...f, variationTypes: [...(f.variationTypes || []), { name: '', options: [] }] }))
-  const addOption = (ti) => setForm(f => ({
-    ...f,
-    variationTypes: f.variationTypes.map((t, i) => i === ti ? { ...t, options: [...t.options, ''] } : t)
-  }))
+  const removeVariationType = (ti) => setForm(f => ({ ...f, variationTypes: f.variationTypes.filter((_, i) => i !== ti) }))
   const updateTypeName = (ti, val) => setForm(f => ({
     ...f,
     variationTypes: f.variationTypes.map((t, i) => i === ti ? { ...t, name: val } : t)
   }))
-  const updateOption = (ti, oi, val) => setForm(f => ({
+  const addOptionValue = (ti, val) => setForm(f => ({
     ...f,
-    variationTypes: f.variationTypes.map((t, i) => i === ti ? { ...t, options: t.options.map((o, j) => j === oi ? val : o) } : t)
+    variationTypes: f.variationTypes.map((t, i) => i === ti && !t.options.includes(val) ? { ...t, options: [...t.options, val] } : t)
+  }))
+  const removeOptionValue = (ti, oi) => setForm(f => ({
+    ...f,
+    variationTypes: f.variationTypes.map((t, i) => i === ti ? { ...t, options: t.options.filter((_, j) => j !== oi) } : t)
   }))
 
   return (
     <div className="flex flex-col gap-4">
-      <SectionCard title="Variation Types">
-        <p className="text-xs text-text-muted -mt-2">Define the types of variations (e.g. Colour, Size) and their available options.</p>
+      <SectionCard title="Options">
+        <p className="text-xs text-text-muted -mt-2">
+          Add up to {MAX_VARIATION_TYPES} options (e.g. Colour, Size) and the values each one can take. Every combination
+          of values becomes its own variant below, each with its own price, inventory, shipping and specs.
+        </p>
         <div className="flex flex-col gap-4">
-          {(form.variationTypes || []).map((vt, ti) => (
+          {variationTypes.map((vt, ti) => (
             <div key={ti} className="border border-border rounded-lg p-4 flex flex-col gap-3">
-              <Field label="Variation Type Name">
-                <Input value={vt.name} onChange={e => updateTypeName(ti, e.target.value)} placeholder="e.g. Colour, Size, Length" className="max-w-xs" />
-              </Field>
+              <div className="flex items-end justify-between gap-3">
+                <Field label="Option Name">
+                  <Input value={vt.name} onChange={e => updateTypeName(ti, e.target.value)} placeholder="e.g. Colour, Size, Length" className="max-w-xs" />
+                </Field>
+                <button type="button" onClick={() => removeVariationType(ti)} className="p-2 rounded-lg text-text-muted hover:text-error-500 hover:bg-error-50 transition-colors shrink-0" title="Remove option">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
               <div>
-                <label className="text-sm font-medium text-text-primary mb-1.5 block">Options</label>
-                <div className="flex flex-wrap gap-2">
-                  {vt.options.map((opt, oi) => (
-                    <Input key={oi} value={opt} onChange={e => updateOption(ti, oi, e.target.value)} placeholder="Option value" className="w-36" />
-                  ))}
-                  <button onClick={() => addOption(ti)} className="flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 font-medium w-fit">
-                    <Plus className="w-4 h-4" />
-                    Add option
-                  </button>
-                </div>
+                <label className="text-sm font-medium text-text-primary mb-1.5 block">Values</label>
+                <OptionValuesInput
+                  values={vt.options}
+                  onAdd={val => addOptionValue(ti, val)}
+                  onRemove={oi => removeOptionValue(ti, oi)}
+                />
               </div>
             </div>
           ))}
-          <button onClick={addVariationType} className="flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 font-medium w-fit">
-            <Plus className="w-4 h-4" />
-            Add variation type
-          </button>
+          {variationTypes.length < MAX_VARIATION_TYPES && (
+            <button onClick={addVariationType} className="flex items-center gap-2 text-sm text-brand-500 hover:text-brand-600 font-medium w-fit">
+              <Plus className="w-4 h-4" />
+              Add another option
+            </button>
+          )}
         </div>
       </SectionCard>
 
-      {(form.variationTypes || []).some(vt => vt.name && vt.options.length > 0) && (
-        <VariationCombinations form={form} setForm={setForm} />
-      )}
+      {combos.length > 0 && <VariationCombinations form={form} setForm={setForm} combos={combos} />}
     </div>
   )
 }
@@ -1603,14 +1745,7 @@ function TabAttributes({ form, setForm }) {
     setNewAttrOpen(false)
   }
 
-  const combos = (form.variationTypes || [])
-    .filter(vt => vt.name && vt.options.length > 0)
-    .reduce((acc, vt) => {
-      if (acc.length === 0) return vt.options.filter(Boolean).map(o => [{ type: vt.name, value: o }])
-      return acc.flatMap(c => vt.options.filter(Boolean).map(o => [...c, { type: vt.name, value: o }]))
-    }, [])
-
-  const comboKey = (combo) => combo.map(c => c.value).join('__')
+  const combos = computeVariantCombos(form.variationTypes)
 
   const [openIdx, setOpenIdx] = useState(null)
 
@@ -1639,7 +1774,7 @@ function TabAttributes({ form, setForm }) {
           <p className="text-xs text-text-muted -mt-2">Assign attribute values to each variation / SKU independently.</p>
           <div className="flex flex-col divide-y divide-border border border-border rounded-xl overflow-hidden">
             {combos.map((combo, ci) => {
-              const key = comboKey(combo)
+              const key = variantComboKey(combo)
               const isOpen = openIdx === ci
               const label = combo.map(c => c.value).join(' / ')
               const varAttrs = (form.variationData ?? {})[key]?.attributes ?? {}
